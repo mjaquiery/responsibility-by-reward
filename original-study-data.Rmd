@@ -1,5 +1,5 @@
 ---
-title: "Minimal groups analysis"
+title: "Original study data analysis"
 author: "Matt Jaquiery (matt.jaquiery@psy.ox.ac.uk)"
 output:
   html_document:
@@ -307,6 +307,10 @@ simData <- simData %>%
     pGetsOutcome = factor(pGetsOutcome)
   )
 
+# We only want to keep the group conditions
+simData <- simData %>% 
+  dplyr::filter(group != 0)
+
 simData
 
 ```
@@ -325,7 +329,7 @@ simData %>%
   stat_summary(geom = 'errorbar', fun.data = mean_cl_normal, width = 0, 
                position = position_dodge(dw)) +
   stat_summary(geom = 'line', fun.y = mean, position = position_dodge(dw)) +
-  facet_wrap(group~pGetsOutcome, labeller = label_both) +
+  facet_wrap(.~pGetsOutcome, labeller = label_both) +
   scale_y_continuous(limits = c(0, 100))
 
 ```
@@ -343,7 +347,7 @@ result <- simData %>%
   within = c(
     decision,
     outcome,
-    group,
+    # group,
     pGetsOutcome
   )
 )
