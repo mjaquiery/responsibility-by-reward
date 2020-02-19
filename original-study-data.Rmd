@@ -31,26 +31,6 @@ theme_set(theme_light() + theme(
   panel.grid = element_blank()
 ))
 
-# rainclouds courtesy of Micah Allen
-# https://micahallen.org/2018/03/15/introducing-raincloud-plots/
-raincloud_theme = theme(
-  text = element_text(size = 10),
-  axis.title.x = element_text(size = 16),
-  axis.title.y = element_text(size = 16),
-  axis.text = element_text(size = 14),
-  axis.text.x = element_text(angle = 45, vjust = 0.5),
-  legend.title = element_text(size = 16),
-  legend.text = element_text(size = 16),
-  legend.position = "right",
-  plot.title = element_text(lineheight = .8, face = "bold", size = 16),
-  panel.border = element_blank(),
-  panel.grid.minor = element_blank(),
-  panel.grid.major = element_blank(),
-  axis.line.x = element_line(colour = 'black', size = 0.5, linetype = 'solid'),
-  axis.line.y = element_line(colour = 'black', size = 0.5, linetype = 'solid')
-  )
-source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
-
 ```
 
 # Feelings of Responsibility by Receivership of Reward
@@ -82,7 +62,7 @@ Alternative: show who gets the outcome before the outcome, to see whether even i
 
 data <- NULL
 
-folder <- 'G:/Documents/University/Google Drive/Temp/data/Marwa/Online experiment'
+folder <- 'past-data/Online experiment'
 for (f in list.files(folder, full.names = T)) {
   if (!grepl('\\.mat$', f)) {
     next()
@@ -151,12 +131,11 @@ We also want to see some general distribution and variability type stuff for par
 
 ```{r}
 
-data %>% filter(condition %in% c("two", "alone")) %>%
+data %>% filter(condition == 'five') %>%
   ggplot(aes(x = scaleResp)) +
   geom_density(aes(fill = pid), alpha = .25, colour = NA) +
   geom_density(fill = NA, colour = 'black', linetype = 'dashed') +
   guides(fill = 'none') +
-  facet_grid(~condition, labeller = label_both) +
   labs(title = 'Density of responses in paried condition',
        subtitle = 'Dashed outline shows overall average, coloured areas show individual participants')
 
@@ -168,12 +147,16 @@ We use the summaries for relevant conditions in the original data as a model for
 
 ```{r model participants in different conditions}
 
-effectSize <- 1
-effectSizes <- rnorm(length(unique(data$pid)), mean = effectSize)
+effectSizeBeneficiary <- 1
+effectSizesBeneficiary <- rnorm(length(unique(data$pid)), 
+                                mean = effectSizeBeneficiary)
+effectSizeInteraction <- 1
+effectSizesInteraction <- rnorm(length(unique(data$pid)), 
+                                mean = effectSizeInteraction)
 
 model <- data %>% 
-  dplyr::filter(condition %in% c('two', 'alone')) %>%
-  group_by(pid, group, agency, outcome, scaleOrder) %>%
+  dplyr::filter(condition == 'five', agency == T, scaleOrder == 2) %>%
+  group_by(pid, agency, outcome, scaleOrder) %>%
   summarise(choiceRT_m = mean(choiceRT),
             choiceRT_sd = sd(choiceRT),
             scaleResp_m = mean(scaleResp),
@@ -182,27 +165,16 @@ model <- data %>%
             scaleRT_sd = sd(scaleRT)) %>%
   dplyr::filter_all(all_vars(!is.nan(.))) %>% 
   # add effects
-  mutate(effectSize = effectSizes[as.numeric(pid)])
-
-# Collapse reponsibility ratings obtained before outcome over the valence
-# because participants didn't know what the outcome valence would be
-model <- model %>%
-  dplyr::filter(scaleOrder == '1') %>%
-  group_by(pid, agency, group) %>%
-  summarise_if(is.numeric, mean) %>%
-  mutate(
-    scaleOrder = factor(1, levels = levels(model$scaleOrder)), 
-    outcome = factor('good', levels = levels(model$outcome))
-    ) %>%
-  rbind(model %>% dplyr::filter(scaleOrder == '2')) # bind back to original
+  mutate(beneficiaryES = effectSizesBeneficiary[as.numeric(pid)],
+         effectSize = effectSizesInteraction[as.numeric(pid)])
 
 # Take out participants who don't give responses for all contingencies.
-# 2xGroup x 2xOutcome + 1.5xScaleOrder
+# 2xOutcome
 pids <- model %>% 
   ungroup() %>%
   group_by(pid) %>%
   summarise(n = n()) %>%
-  dplyr::filter(n == 6)
+  dplyr::filter(n == 2)
 
 model <- model %>% dplyr::filter(pid %in% pids$pid)
 
@@ -212,19 +184,13 @@ model
 
 ### Simulate new data from model
 
-New data are produced from the model by using the 
+New data are produced from the model by using the distributions identified from the real participants.
 
 ```{r simulate data with new pattern}
 
 simData <- data %>% 
-  dplyr::filter(F) %>%                          # empty current data
-  mutate(pGetsOutcome = agency,
-         agency = NULL,
-         scaleOrderFinal = sample(scaleOrder),
-         scaleRespFinal = sample(scaleResp),
-         scaleRTFinal = sample(scaleRT))        # add new columns
-
-sdAll <- mean(model$scaleResp_sd)               # for adding of effects
+  dplyr::filter(F) %>%            # empty current data
+  mutate(pGetsOutcome = F)        # add new columns
 
 # The code is vectorised over reps, so increasing this has less performance
 # impact than we might think. This will be useful for bootstrap sampling in
@@ -232,54 +198,32 @@ sdAll <- mean(model$scaleResp_sd)               # for adding of effects
 reps <- 10
 
 for (pid in unique(model$pid)) {
-  for (group in c(0, 2)) {
-    for (pGetsOutcome in c(T, F)) {
-      condition <- ifelse(group == 0, 'alone, ', 'paired, ') %>%
-        paste0(ifelse(pGetsOutcome, 'p outcome', 'other outcome'))
+  for (pGetsOutcome in c(T, F)) {
+    for (outcome in c('good', 'bad')) {
+      tmp <- dplyr::filter(model, pid == !!pid, outcome == !!outcome)
       
-      for (outcome in c('good', 'bad')) {
-        pre <- dplyr::filter(model,
-                             pid == !!pid, 
-                             group == !!group) %>%
-          plyr::summarise(choiceRT_m = mean(choiceRT_m),
-                    scaleRT_m = mean(scaleRT_m),
-                    scaleResp_m = mean(scaleResp_m))
-        
-        tmp <- dplyr::filter(model, 
-                             pid == !!pid,
-                             group == !!group,
-                             outcome == !!outcome)
-        
-        # Add in the actual effect 
-        # (more responsibility if self gets outcome, regardless of valence)
-        if (pGetsOutcome) {
-          tmp$scaleResp_m <- tmp$scaleResp_m + (sdAll * tmp$effectSize)
-        }
-        
-        simData <- rbind(simData, 
-                         tibble(
-                           pid = pid,
-                           condition,
-                           group,
-                           pGetsOutcome,
-                           outcome,
-                           choiceRT = rnorm(reps, 
-                                            pre$choiceRT_m, 
-                                            tmp$choiceRT_sd),
-                           scaleResp = rnorm(reps, 
-                                             pre$scaleResp_m, 
-                                             tmp$scaleResp_sd),
-                           scaleRT = rnorm(reps, 
-                                           pre$scaleRT_m, 
-                                           tmp$scaleRT_sd),
-                           scaleRespFinal = rnorm(reps, 
-                                                  tmp$scaleResp_m, 
-                                                  tmp$scaleResp_sd),
-                           scaleRTFinal = rnorm(reps, 
-                                                tmp$scaleRT_m, 
-                                                tmp$scaleRT_sd)
-                         ))     
-      }
+      # Add in the actual effect 
+      # (more responsibility if self gets outcome, regardless of valence)
+      tmp$scaleResp_m <- tmp$scaleResp_m + 
+        (tmp$scaleResp_sd * tmp$beneficiaryES * pGetsOutcome) +
+        (tmp$scaleResp_sd * tmp$effectSize * pGetsOutcome * (outcome == 'good'))
+      
+      simData <- rbind(simData, 
+                       tibble(
+                         pid = pid,
+                         pGetsOutcome,
+                         group = 'five',
+                         outcome,
+                         choiceRT = rnorm(reps, 
+                                          tmp$choiceRT_m, 
+                                          tmp$choiceRT_sd),
+                         scaleResp = rnorm(reps, 
+                                           tmp$scaleResp_m, 
+                                           tmp$scaleResp_sd),
+                         scaleRT = rnorm(reps, 
+                                         tmp$scaleRT_m, 
+                                         tmp$scaleRT_sd)
+                       ))     
     }
   }
 }
@@ -289,27 +233,17 @@ simData <- simData %>%
   mutate(
     choiceRT = pmax(choiceRT, 0),
     scaleRT = pmax(scaleRT, 0),
-    scaleRTFinal = pmax(scaleRTFinal, 0),
-    scaleResp = pmin(100, pmax(0, scaleResp)),
-    scaleRespFinal = pmin(100, pmax(0, scaleRespFinal))
+    scaleResp = pmin(100, pmax(0, scaleResp))
   )
 
 
 simData <- simData %>%
-  gather(key = 'decision', 
-         value = 'scaleResponse', 
-         c(scaleRespFinal, scaleResp)) %>%
   mutate(
     pid = factor(pid),
-    decision = factor(decision),
     group = factor(group),
     outcome = factor(outcome),
     pGetsOutcome = factor(pGetsOutcome)
   )
-
-# We only want to keep the group conditions
-simData <- simData %>% 
-  dplyr::filter(group != 0)
 
 simData
 
@@ -322,15 +256,16 @@ Plot simulated data.
 ```{r simulated data plots}
 
 simData %>% 
-  ggplot(aes(x = decision, y = scaleResponse, 
+  ggplot(aes(x = pGetsOutcome, y = scaleResp, 
                     colour = outcome, group = outcome)) +
   stat_summary(geom = 'point', fun.y = mean, alpha = .5,
                position = position_dodge(dw)) +
   stat_summary(geom = 'errorbar', fun.data = mean_cl_normal, width = 0, 
                position = position_dodge(dw)) +
   stat_summary(geom = 'line', fun.y = mean, position = position_dodge(dw)) +
-  facet_wrap(.~pGetsOutcome, labeller = label_both) +
-  scale_y_continuous(limits = c(0, 100))
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(x = "Participant is beneficiary", 
+       y = "Retrospective feeling of responsibility for decision")
 
 ```
 
@@ -342,12 +277,10 @@ Test simulated data.
 
 result <- simData %>% 
   ezANOVA(
-  dv = scaleResponse,
+  dv = scaleResp,
   wid = pid,
   within = c(
-    decision,
     outcome,
-    # group,
     pGetsOutcome
   )
 )
@@ -355,3 +288,5 @@ result <- simData %>%
 result
 
 ```
+
+So here we see we are unable to detect the effect we placed within the data for the interaction. The power analysis script does more digging in this regard, allowing us to estimate more precisely how large effects need to be before they are reliably detected.
