@@ -45,7 +45,7 @@ allSD <- 7  # estimated SD of responses from everyone for scaling effect sizes
 beneficiaryMainEffectSizes <- c(0, .3, .7, 1) * allSD
 effectSizes <- c(0, .3, .7, 1) * allSD
 ns <- c(25, 50, 75)
-reps <- 20
+reps <- 100
 
 params <- crossing(n = ns,
                    beneficiary_es = beneficiaryMainEffectSizes,
@@ -168,8 +168,4 @@ aovs %>% group_by(es, beneficiary_es, n) %>%
 
 ```
 
-Because we have no effect of participant getting the outcome where effectSize = 0, the pSig represents a false positive rate. Anywhere else, we know there is an effect, so (1 - pSig) gives the false negative rate. Note that stronger main effects of beneficiary reduce the power to detect the interaction, so having a reasonable estimate of the size of this effect will help for calculating power.
-
-### Next steps
-
-We now have the tools to calculate power empirically. 
+Because we have no effect of participant getting the outcome where effectSize = 0, the pSig represents a false positive rate. Anywhere else, we know there is an effect, so (1 - pSig) gives the false negative rate. Note that main effects of beneficiary change the power to detect the interaction.
