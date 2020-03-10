@@ -142,7 +142,16 @@ We now have p-values for all those effects for each model.
 
 ### Power analysis
 
-We can now look to see how frequently effects are detected for each of our parameter settings. We have two dimensions, effect size and sample size, so we can make a grid where we colour the cells according to how frequently we get p-values < alpha. Let's start by looking at the main effect of whether the participant gets the outcome.
+We can now look to see how frequently effects are detected for each of our parameter settings. We have two dimensions, effect size and sample size, so we can make a grid where we colour the cells according to how frequently we get p-values < alpha.
+
+Remember that:
+| Decision | $H_0$ = TRUE | $H_1$ = TRUE |
+| Reject $H_0$ | Type 1 error ($p = \alpha$) | Correct rejection ($p = 1 - \beta$) |
+| Accept $H_0$ | Correct ($p = 1 - \alpha$) | Type 2 error ($p = \beta$) |
+
+Here we already know whether $H_0$ is TRUE - we are controlling the effect size which determines the truth or falsity of $H_0$. This means that we're only ever dealing with one column at a time, for effect size = 0 it will be the left column (whatever frequency p-values less than our preset alpha appear at will be our empirical alpha), and for the others it will be the right column. For these cases, the frequency of p-values less than the preset alpha will represent correct rejections of $H_0$ (i.e. $\text{cr} = 1 - \beta$), which is the definition of power.
+
+Let's start by looking at the main effect of whether the participant gets the outcome.
 
 ```{r}
 
