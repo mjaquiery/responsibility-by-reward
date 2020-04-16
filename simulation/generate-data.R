@@ -7,6 +7,8 @@
 #' @param n number of participants to simulate for
 #' @param beneficiaryEffectMean mean effect size (in scale points)
 #' @param beneficiaryEffectSD effect size standard deviation (in scale points)
+#' @param majorityEffectMean mean effect size (in scale points)
+#' @param majorityEffectSD effect size standard deviation (in scale points)
 #' @param effectSizeMean mean effect size (in scale points)
 #' @param effectSizeSD effect size standard deviation (in scale points)
 #' @param nReps number of trials in each condition by each participant
@@ -16,20 +18,23 @@ generateData <- function(
   n, 
   beneficiaryEffectMean = 5,
   beneficiaryEffectSD = 15,
+  majorityEffectMean = 5,
+  majorityEffectSD = 15,
   effectSizeMean = 5, 
   effectSizeSD = 15,
-  nReps = 10
+  nReps = 3
   ) {
   # Experimental conditions with fixed effects
   outcomes <- c('bad', 'good')
-  pGetsOutcome <- c(F, T)
+  pGetsOutcome <- c(F, F, F, T, T)
+  pInMajority <- c(T, F)
+  
+  set <- expand_grid(outcomes, pGetsOutcome, pInMajority)
   
   # Numbers for row count calculations
   N <- list(
     p = n,
-    r = nReps,
-    outcomes = length(outcomes),
-    pGets = length(pGetsOutcome)
+    r = nReps * nrow(set)
   )
   
   # Participant parameters
@@ -44,6 +49,9 @@ generateData <- function(
     beneficiary = rnorm(N$p, beneficiaryEffectMean, beneficiaryEffectSD),
     # Guestimate a sensible standard deviation roughly based on effect size
     beneficiary_sd = abs(rnorm(N$p, beneficiaryEffectSD, beneficiaryEffectSD / 3)),
+    majority = rnorm(N$p, majorityEffectMean, majorityEffectSD),
+    # Guestimate a sensible standard deviation roughly based on effect size
+    majority_sd = abs(rnorm(N$p, majorityEffectSD, majorityEffectSD / 3)),
     effectSize_m = rnorm(N$p, effectSizeMean, effectSizeSD),
     # Guestimate a sensible standard deviation roughly based on effect size
     effectSize_sd = abs(rnorm(N$p, effectSizeSD, effectSizeSD / 3))
@@ -51,9 +59,12 @@ generateData <- function(
   
   # Blank data frame with crossed condition structure
   data <- crossing(pid = 1:N$p, 
-                   rep = 1:N$r, 
-                   outcome = outcomes, 
-                   pGetsOutcome = pGetsOutcome) %>%
+                   rep = 1:N$r) %>%
+    mutate(
+      outcome = set$outcomes[(rep %% nrow(set)) + 1],
+      pGetsOutcome = set$pGetsOutcome[(rep %% nrow(set)) + 1],
+      pInMajority = set$pInMajority[(rep %% nrow(set)) + 1]
+    ) %>%
     select(-rep) %>%
     nest(data = -pid) %>%
     mutate(
@@ -73,11 +84,13 @@ generateData <- function(
     # apply effects
     mutate(
       scaleResp = rnorm(n(), scaleResp_m, scaleResp_sd) +                              # basic mean
+        rnorm(n(), majority, majority_sd) * pInMajority +                              # whether participant is in majority
         rnorm(n(), outcome_m, outcome_sd) * (outcome == 'good') +                      # outcome valence
         rnorm(n(), beneficiary, beneficiary_sd) * pGetsOutcome +                       # participant is beneficiary
         rnorm(n(), effectSize_m, effectSize_sd) * pGetsOutcome * (outcome == 'good'),  # interaction
       # plain uses static effect sizes for each participant rather than a distribution per trial
       scaleResp_plain = rnorm(n(), scaleResp_m, scaleResp_sd) +
+        majority * pInMajority +
         outcome_m * (outcome == 'good') +
         beneficiary * pGetsOutcome +
         effectSize_m * pGetsOutcome * (outcome == 'good')

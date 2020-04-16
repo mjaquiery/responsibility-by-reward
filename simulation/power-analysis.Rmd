@@ -13,168 +13,162 @@ editor_options:
   chunk_output_type: inline
 ---
 
-September 2019
+April 2020
 
 [Script run `r Sys.time()`]
 
-```{r libraries, include=F}
-
-library(tidyverse)  # data wrangling
-library(broom)      # vectorised function unpacking
-library(ez)         # ANOVA functions with nice mixed syntax
-
-theme_set(theme_light() + theme(
-  panel.grid = element_blank()
-))
-
-```
-
 # Feelings of Responsibility by Receivership of Reward
-## Marwa El Zein and Matt Jaquiery. 
+## Marwa El Zein and Matt Jaquiery
 
 People’s sense of responsibility for decisions is strongly dependent on the success of the outcome. We want to know whether this effect is dependent upon whether the person concerned actually receives the outcome.
 
 ## Power analysis using simulations
 
-```{r}
+The techniques used here are illustrated in the power-analysis-demo.Rmd file. The simulations in that demo gave us a rough indication of the landscape, and now we can target the exact cell we want and look at the power in that specific cell using many more simulation repetitions. We will be picking a *d* = 0.7 for all main effects because that seems reasonable based on prior research. 
+
+### Structure
+
+The task structure occurs in sets of 20 trials (1:1 ratios for minority/majority and no/reward, and 2:3 ratio for participant/other rewarded). There are three of these sets in a study. Below we use an example simulation of one study of one participant to demonstrate the trial structure:
+
+```{r echo=T}
+library(tidyverse)
+
 source("generate-data.R")
+allSD <- 7  # estimated SD of responses from everyone for scaling effect sizes
+beneficiary <- .7 * allSD
+majority <- .7 * allSD
+effect <- .7 * allSD
+n <- 1
+
+# generate-data.R exports this function
+generateData(n, beneficiary, beneficiary/3, majority, majority/3, effect, effect/3) %>%
+  select(trialId:pInMajority) #%>% write.csv('tmp-data/structure.csv', row.names = F)
+
+```
+
+### Power analysis
+
+First we define a function which will turn a simulation into two values: the ANOVA p-value and the Bayesian ANOVA BayesFactor. 
+
+```{r echo=T}
+
+# For simplicity we hardcode all the values here
+sim <- function(r, printTo = NULL) {
+  require(ez)
+  require(BayesFactor)
+  require(purrr)
+  require(magrittr)
+  require(dplyr)
+  require(tidyr) # required by generateData
+  require(tibble) # required by generateData
+  
+  allSD <- 7  # estimated SD of responses from everyone for scaling effect sizes
+  beneficiary <- .7 * allSD
+  majority <- .7 * allSD
+  effect <- .7 * allSD
+  n <- 50
+  
+  data <- generateData(n, beneficiary, beneficiary/3, majority, majority/3, effect, effect/3)
+  suppressWarnings(
+    aovs <- data %>%
+      mutate_at(vars(pid, outcome, pGetsOutcome, pInMajority), factor) %>%
+      nest(data = everything()) %>%
+      mutate(
+        aov = map(data, ~ ezANOVA(data = .x,
+                                  dv = scaleResp_plain,
+                                  wid = pid,
+                                  within = c(
+                                    outcome,
+                                    pGetsOutcome,
+                                    pInMajority
+                                  ))),
+        aovBF = map(data, ~ anovaBF(data = .x,
+                                    formula = scaleResp_plain ~ 
+                                      outcome + pGetsOutcome + pInMajority + pid,
+                                    whichRandom = 'pid', progress = F))
+      )
+  )
+  
+  
+  # fetch unique contribution of the outcome:pGetsOutcome interaction in anova and anovaBF
+  f <- function(x) x$ANOVA %>% filter(Effect == 'outcome:pGetsOutcome') %>% .$p
+  f.bf <- function(x) {
+    x <- x@bayesFactor %>% 
+      mutate(n = rownames(.)) 
+    mdl <- x %>% filter(n == "outcome + pGetsOutcome + outcome:pGetsOutcome + pInMajority + pid")
+    err <- x %>% filter(n == "outcome + pGetsOutcome + pInMajority + pid")
+    # transitivity of bayesfactors means dividing mdl by err gives BF of mdl:err
+    exp(mdl$bf - err$bf) # convert log-likelihood to likelihood
+  }
+  aovs <- aovs %>%
+    mutate(
+      p = map_dbl(aov, f),
+      bf = map_dbl(aovBF, f.bf)
+    )
+  
+  if (!is.null(printTo)) {
+    out <- tribble(
+      ~rep, ~p, ~bf,
+      r, aovs$p, aovs$bf
+    )
+    write.table(out, printTo, sep = ",", append = T, col.names = F, row.names = F)
+  }
+  
+  list(rep = r, p = aovs$p, bf = aovs$bf)
+}
+
+```
+
+Then we set that to run in parallel for some number of repetitions.
+
+```{r echo=T}
+library(parallel)
+
+reps <- 10000
+
+# we actually run 100 x 100 reps to ensure we don't hit memory issues, etc, offloading to the hard drive as we go
+
+outfile <- paste0(getwd(), '/tmp-data/reps.csv')
+write.table(tribble(~rep, ~p, ~bf), outfile, sep = ",", append = F)
 
 timeStart <- Sys.time()
 
-allSD <- 7  # estimated SD of responses from everyone for scaling effect sizes
-beneficiaryMainEffectSizes <- c(0, .3, .7, 1) * allSD
-effectSizes <- c(0, .3, .7, 1) * allSD
-ns <- c(25, 50, 75)
-reps <- 100
-
-params <- crossing(n = ns,
-                   beneficiary_es = beneficiaryMainEffectSizes,
-                   es = effectSizes,
-                   rep = 1:reps)
-
-data <- params %>%
-  mutate(
-    result = pmap(.l = ., .f = ~ generateData(..1, ..2, ..2 / 3, ..3, ..3 / 3)),
-    run = paste0('n = ', n, '; bes = ', beneficiary_es, '; bes_sd = ',
-                  beneficiary_es / 3, '; es = ', es, '; es_sd = ', es / 3, 
-                  '; rep = ', rep)
-  )
-
-data <- data %>% unnest(result)
+for (r in 1:sqrt(reps)) {
+  cl <- makeCluster(detectCores() - 4)
   
+  clusterExport(cl, c("generateData", "outfile"))
+  
+  parSapply(cl, 1:sqrt(reps), sim, printTo = outfile)
+  
+  stopCluster(cl)
+}
+
 timeEnd <- Sys.time()
+
+data <- read.csv(outfile)
 
 print(paste0(
   "Data generation complete. Generated ",
   nrow(data), " rows in ",
   round(difftime(timeEnd, timeStart, units = "secs"), 2), "s."
 ))
-
 ```
 
-### Plot data
-
-If the model is generating data correctly we should see some patterns emerging clearly as the effect size increases.
+Finally we print some results
 
 ```{r}
-
-data %>% group_by(pid, run, outcome, pGetsOutcome) %>%
-  rename(b_es = beneficiary_es) %>%
-  dplyr::filter(n == max(n)) %>%
-  summarise_if(is.numeric, mean) %>%
-  ggplot(aes(x = pGetsOutcome, y = scaleResp, colour = outcome)) +
-  stat_summary(geom = "line", aes(group = paste(outcome)), 
-               fun.y = mean, position = position_dodge(.0)) +
-  stat_summary(geom = 'errorbar', aes(group = paste(outcome)), width = 0,
-               fun.data = mean_cl_normal, position = position_dodge(.0)) + 
-  scale_y_continuous(limits = c(0, 100)) +
-  facet_grid(b_es~es, labeller = label_both) 
-
+print(paste0("ANOVA p < .05 power: ", mean(data$p < .05, na.rm = T),
+             "; mean p = ", round(mean(data$p, na.rm = T), 6)))
+print(paste0("ANOVA BF > 3 power: ", mean(data$bf > 3, na.rm = T),
+             "; mean BF = ", round(mean(data$bf, na.rm = T), 2)))
 ```
 
-We told the model that participants should feel more responsible for good outcomes than bad outcomes (blue lines are always above red). We systematically vary the magnitude of the effect of the participant being the beneficiary (lower rows have higher effect sizes) and the interaction between beneficiary and valence (increasing by column from left to right). We see both feelings of responsibility for both valences increasing with beneficiary effect size and bigger increases for good outcome valence as the interaction effect size increases. So far so good. Now we can do statistical tests in preparation for an empirical power analysis. 
+## Technical details  
 
-### Stats (ANOVA)
-
-```{r}
-timeStart <- Sys.time()
-
-suppressWarnings(
-  aovs <- data %>%
-    mutate_at(vars(pid, outcome, pGetsOutcome), factor) %>%
-    nest(data = c(-run, -es, -beneficiary_es, -rep, -n)) %>%
-    mutate(has_na = map(data, ~ any(is.na(.)))) %>%
-    unnest_legacy(has_na) %>%
-    dplyr::filter(!has_na) %>%
-    mutate(
-      aov = map(data, ~ ezANOVA(data = .x,
-                                dv = scaleResp_plain,
-                                wid = pid,
-                                within = c(
-                                  outcome,
-                                  pGetsOutcome
-                                  )))
-    )
-)
-
-print(paste0("Skipped ", nrow(params) - nrow(aovs), " runs with NA values."))
-
-f <- function(x) x$ANOVA %>% filter(Effect == 'outcome:pGetsOutcome') %>% .$p
-aovs <- aovs %>%
-  mutate(
-    `p.outcome:pGetsOutcome` = map(aov, f)
-  ) %>% 
-  unnest(`p.outcome:pGetsOutcome`)
-
-timeEnd <- Sys.time()
-
-print(paste0(
-  "ANOVAs completed. Ran ",
-  nrow(aovs), " analyses in ",
-  round(difftime(timeEnd, timeStart, units = "secs"), 2), "s."
-))
-
-aovs
-
+```{r results = 'hold'}
+cat(paste('Time stamp:', Sys.time(), '\n\n'))
+cat('Runtime \n')
+proc.time()
+cat('\n')
+sessionInfo()
 ```
-
-We now have p-values for all those effects for each model. 
-
-### Power analysis
-
-We can now look to see how frequently effects are detected for each of our parameter settings. We have two dimensions, effect size and sample size, so we can make a grid where we colour the cells according to how frequently we get p-values < alpha.
-
-Remember that:
-| Decision | $H_0$ = TRUE | $H_1$ = TRUE |
-| Reject $H_0$ | Type 1 error ($p = \alpha$) | Correct rejection ($p = 1 - \beta$) |
-| Accept $H_0$ | Correct ($p = 1 - \alpha$) | Type 2 error ($p = \beta$) |
-
-Here we already know whether $H_0$ is TRUE - we are controlling the effect size which determines the truth or falsity of $H_0$. This means that we're only ever dealing with one column at a time, for effect size = 0 it will be the left column (whatever frequency p-values less than our preset alpha appear at will be our empirical alpha), and for the others it will be the right column. For these cases, the frequency of p-values less than the preset alpha will represent correct rejections of $H_0$ (i.e. $\text{cr} = 1 - \beta$), which is the definition of power.
-
-Let's start by looking at the main effect of whether the participant gets the outcome.
-
-```{r}
-
-alpha = .05
-
-aovs %>% group_by(es, beneficiary_es, n) %>%
-  summarise(pSig = mean(`p.outcome:pGetsOutcome` < alpha)) %>%
-  ggplot(aes(x = n, y = es, fill = pSig)) +
-  geom_tile() +
-  geom_text(aes(label = round(pSig, 3)), colour = "white") +
-  # use the actual values we simulated as labels
-  scale_y_continuous(breaks = effectSizes) +
-  scale_x_continuous(breaks = ns) +
-  scale_color_continuous(name = "Power") +
-  labs(
-    title = "Heatmap of the probability of a significant result",
-    subtitle = paste0("alpha = ", alpha, "; simulations for each cell = ", reps,
-                      '; facets = beneficiary effect size'),
-    y = "Effect size in scale points",
-    x = "Number of participants"
-    ) +
-  facet_wrap(~beneficiary_es)
-
-```
-
-Because we have no effect of participant getting the outcome where effectSize = 0, the pSig represents a false positive rate. Anywhere else, we know there is an effect, so (1 - pSig) gives the false negative rate. Note that main effects of beneficiary change the power to detect the interaction.
