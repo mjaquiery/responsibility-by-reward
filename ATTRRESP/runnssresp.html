@@ -4,169 +4,171 @@
 <head>
   <title>Experiment</title>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+  <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
   <script src="jspsych-6.0/jspsych.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-instructions.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-custom-form.js"></script>
-    <script src="jspsych-6.0/plugins/jspsych-survey-multi-select.js"></script>
+  <script src="jspsych-6.0/plugins/jspsych-survey-multi-select.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-html-keyboard-response.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-html-button-response.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-image-button-response.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-image-keyboard-response.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-image-button-response2.js"></script>
-    <script src="jspsych-6.0/plugins/jspsych-image-keyboard-response2.js"></script>
+  <script src="jspsych-6.0/plugins/jspsych-image-keyboard-response2.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-fullscreen.js"></script>
   <script src="jspsych-6.0/plugins/jspsych-survey-text.js"></script>
   <link href="jspsych-6.0/css/jspsych.css" rel="stylesheet" type="text/css"></link>
   <script src="jspsych-6.0/plugins/jspsych-html-slider-response.js"></script>
   <script src="allfunctions.js"></script>
   <script src="alltrials.js"></script>
-    <script src="allimgcombinations.js"></script>
+  <script src="allimgcombinations.js"></script>
   <script src="describe_instructions.js"></script>
+  <script src="jspsych-6.0/plugins/jspsych-gamble-result.js"></script>
+  <link rel="stylesheet" href="style/gamble-result.css"/>
 
-<style>
+  <style>
 
-::-webkit-scrollbar {
-    display: none;
-}
-  .loader_center{
-    position: absolute;
-    left: 45%;
-    top: 40%;
-    z-index: 1;
-  width: 100px;
-  height: 120px;
-  margin: 140px 0 0 ;
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    .loader_center{
+      position: absolute;
+      left: 45%;
+      top: 40%;
+      z-index: 1;
+      width: 100px;
+      height: 120px;
+      margin: 140px 0 0 ;
 
-    border: 14px solid #f3f3f3;
-    border-radius: 50%;
-    border-top: 14px solid #4C4646;
-    width: 100px;
-    height: 100px;
-    -webkit-animation: spin 1s linear infinite;
-    animation: spin 0.5s linear infinite;
-  }
+      border: 14px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 14px solid #4C4646;
+      width: 100px;
+      height: 100px;
+      -webkit-animation: spin 1s linear infinite;
+      animation: spin 0.5s linear infinite;
+    }
 
-@-webkit-keyframes spin {
-  0% { -webkit-transform: rotate(0deg); }
-  100% { -webkit-transform: rotate(360deg); }
-}
+    @-webkit-keyframes spin {
+      0% { -webkit-transform: rotate(0deg); }
+      100% { -webkit-transform: rotate(360deg); }
+    }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
 
-body {background-color:#979A9A;
+    body {background-color:#979A9A;
 
-}
+    }
 
-</style>
+  </style>
 
 </head>
 
-  <body>
-  </body>
+<body>
+</body>
 
-  <script type="text/javascript">
+<script type="text/javascript">
 
   //check for chrome browser
   function getBrowserInfo()
   {
-          var ua = navigator.userAgent, tem,
-          M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
-          if(/trident/i.test(M[1]))
-          {
-                  tem=  /\brv[ :]+(\d+)/g.exec(ua) || [];
-                  return 'IE '+(tem[1] || '');
-          }
-          if(M[1]=== 'Chrome')
-          {
-                  tem= ua.match(/\b(OPR|Edge)\/(\d+)/);
-                  if(tem!= null) return tem.slice(1).join(' ').replace('OPR', 'Opera');
-          }
-          M = M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];
-          if((tem= ua.match(/version\/(\d+)/i))!= null)
-                  M.splice(1, 1, tem[1]);
-          return { 'browser': M[0], 'version': M[1] };
+    var ua = navigator.userAgent, tem,
+            M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
+    if(/trident/i.test(M[1]))
+    {
+      tem=  /\brv[ :]+(\d+)/g.exec(ua) || [];
+      return 'IE '+(tem[1] || '');
+    }
+    if(M[1]=== 'Chrome')
+    {
+      tem= ua.match(/\b(OPR|Edge)\/(\d+)/);
+      if(tem!= null) return tem.slice(1).join(' ').replace('OPR', 'Opera');
+    }
+    M = M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];
+    if((tem= ua.match(/version\/(\d+)/i))!= null)
+      M.splice(1, 1, tem[1]);
+    return { 'browser': M[0], 'version': M[1] };
   }
 
-var browserInfo = getBrowserInfo();
-var wrong_browser = {
-          type: 'html-button-response',
-          stimulus: '<p>This experiment only has support for Google Chrome.</p>'
-                 +'<p>Please reopen the experiment in this browser.</p>',
-                 choices:['OK']
-};
-
-
-
-  	if(browserInfo.browser !== 'Chrome' && browserInfo.browser !== 'Firefox')
-  {
-  var task=[];
-  task.push({
+  var browserInfo = getBrowserInfo();
+  var wrong_browser = {
     type: 'html-button-response',
-    stimulus: '<p>This experiment only has support for Google Chrome and Firefox.</p>'
-  });
-
-  jsPsych.init({
-  //display_element: $('#jspsych-target'),
-  timeline: task,
-  show_progress_bar: true,
+    stimulus: '<p>This experiment only has support for Google Chrome.</p>'
+            +'<p>Please reopen the experiment in this browser.</p>',
+    choices:['OK']
+  };
 
 
-  });
+
+  if(browserInfo.browser !== 'Chrome' && browserInfo.browser !== 'Firefox')
+  {
+    var task=[];
+    task.push({
+      type: 'html-button-response',
+      stimulus: '<p>This experiment only has support for Google Chrome and Firefox.</p>'
+    });
+
+    jsPsych.init({
+      //display_element: $('#jspsych-target'),
+      timeline: task,
+      show_progress_bar: true,
+
+
+    });
   }
-else
-{
+  else
+  {
 
 
-  var dstart = new Date();
-  var nstart = dstart.getTime();
-  jsPsych.data.addProperties({date: dstart});
+    var dstart = new Date();
+    var nstart = dstart.getTime();
+    jsPsych.data.addProperties({date: dstart});
     jsPsych.data.addProperties({time: nstart});
 //check for uniqueness of subject id and add subject id as a property in jspsych
-  var subject_id = Math.floor(Math.random()*9000000) + 1000000 ;
+    var subject_id = Math.floor(Math.random()*9000000) + 1000000 ;
 
-function save_data_pt(data){
-   //var data_table = "expgamble"; // change this for different experiments
-   var data_table = "SRESPEXP";
-   $.ajax({
-      type:'post',
-      cache: false,
-      url: 'savedata_sql.php', // change this to point to your php file.
-      // opt_data is to add additional values to every row, like a subject ID
-      // replace 'key' with the column name, and 'value' with the value.
-      data: {
+    function save_data_pt(data){
+      //var data_table = "expgamble"; // change this for different experiments
+      var data_table = "SRESPEXP";
+      $.ajax({
+        type:'post',
+        cache: false,
+        url: 'savedata_sql.php', // change this to point to your php file.
+        // opt_data is to add additional values to every row, like a subject ID
+        // replace 'key' with the column name, and 'value' with the value.
+        data: {
           table: data_table,
           json: JSON.stringify(data)
-      },
-      //success: function(output) { console.log(sub); console.log(output); }
-      success: function(output) { } // write the result to javascript console
-   });
-}
+        },
+        //success: function(output) { console.log(sub); console.log(output); }
+        success: function(output) { } // write the result to javascript console
+      });
+    }
 
 
-var survey_id = {
-type: 'survey-text',
-questions: [{ prompt:"<p> Please enter your prolific ID. This is essential for you to get paid at the end of the experiment"}],
-data:{label:'surveyid'}
-}
+    var survey_id = {
+      type: 'survey-text',
+      questions: [{ prompt:"<p> Please enter your prolific ID. This is essential for you to get paid at the end of the experiment"}],
+      data:{label:'surveyid'}
+    }
 
 
-var survey_trial = {
-  type: 'survey-text',
-  questions: [{ prompt: "PLEASE ANSWER the following questions. This is mandatory to continue the study. If you do not wish to answer, please stop the experiment now, thank you. <br> <p> How old are you?" }, { prompt: "What is your gender? Please write F for female and M for male." }],
-  data: { label: 'survey' }
-};
+    var survey_trial = {
+      type: 'survey-text',
+      questions: [{ prompt: "PLEASE ANSWER the following questions. This is mandatory to continue the study. If you do not wish to answer, please stop the experiment now, thank you. <br> <p> How old are you?" }, { prompt: "What is your gender? Please write F for female and M for male." }],
+      data: { label: 'survey' }
+    };
 
 
-var task=[];
-task.push({
-  type: 'fullscreen',
-  fullscreen_mode: true
-});
+    var task=[];
+    task.push({
+      type: 'fullscreen',
+      fullscreen_mode: true
+    });
 
 //task.push(welcome());
 //task.push(consentrun());
@@ -175,179 +177,190 @@ task.push({
 //task.push(describe_inst());
 
 
-var expstart= {
-    type: 'html-button-response',
-    stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Experiment starting </p>'+
-    '<p style="font-size:26px; line-height:1.5 "> You will play 3 blocs of 20 rounds. You can take a break after each bloc.</p>',
-    choices: ['Start'],
-    post_trial_gap:0,
-};
+    var expstart= {
+      type: 'html-button-response',
+      stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Experiment starting </p>'+
+              '<p style="font-size:26px; line-height:1.5 "> You will play 3 blocs of 20 rounds. You can take a break after each bloc.</p>',
+      choices: ['Start'],
+      post_trial_gap:0,
+    };
 
-task.push(expstart);
+    task.push(expstart);
 
 //returns a random number between min (included) and max (excluded):
-function getRndInteger2(min, max) {
-  return Math.floor(Math.random() * (max - min) ) + min;
-}
+    function getRndInteger2(min, max) {
+      return Math.floor(Math.random() * (max - min) ) + min;
+    }
 
 //returns a random number between min and max (both included):
-function getRndInteger(min, max) {
-  return Math.floor(Math.random() * (max - min + 1) ) + min;
-}
+    function getRndInteger(min, max) {
+      return Math.floor(Math.random() * (max - min + 1) ) + min;
+    }
 
-var num1= getRndInteger(10, 99);
-var num2= getRndInteger(10, 99);
-var num3= getRndInteger(10, 99);
-var num4= getRndInteger(10, 99);
+    var num1= getRndInteger(10, 99);
+    var num2= getRndInteger(10, 99);
+    var num3= getRndInteger(10, 99);
+    var num4= getRndInteger(10, 99);
 
-while ((num1==num2) || (num1==num3) || (num2==num3) || (num2==num4) || (num3==num4) || (num1==num4))
-{
-var num1= getRndInteger(10, 99);
-var num2= getRndInteger(10, 99);
-var num3= getRndInteger(10, 99);
-var num4= getRndInteger(10, 99);
-}
+    while ((num1==num2) || (num1==num3) || (num2==num3) || (num2==num4) || (num3==num4) || (num1==num4))
+    {
+      var num1= getRndInteger(10, 99);
+      var num2= getRndInteger(10, 99);
+      var num3= getRndInteger(10, 99);
+      var num4= getRndInteger(10, 99);
+    }
 
 
-var imagestoshow=imgcomb();
+    var imagestoshow=imgcomb();
 
-                    //for(var tr=0; tr<2;tr++){
+    //for(var tr=0; tr<2;tr++){
 
-for(var bl=0; bl<3;bl++){
+    for(var bl=0; bl<3;bl++){
 
-  var blocstart= {
+      var blocstart= {
+        type: 'html-button-response',
+        stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Bloc '+(bl+1)+' starting </p>'+
+                '<p style="font-size:26px; line-height:1.5 "> Are you ready ?</p>',
+        choices: ['Start'],
+        blocstart:0,
+      };
+
+      task.push(blocstart);
+
+      var currentlist=trials();
+
+      for(var tr=0; tr<currentlist.length;tr++){
+
+        trial=currentlist[tr];
+
+        var img1=imagestoshow[(bl*20)+tr].A;
+        var img2=imagestoshow[(bl*20)+tr].B;
+        var img1path='stim/img'+img1 + '.jpg';
+        var img2path='stim/img'+img2 + '.jpg';
+
+        if (trial.getsout==1){
+          if (trial.outcome == 1) {
+            //var outimg='img/Win.jpg';
+            //  var  outimg='<p><b><font size="10">YOU</b></font> receive the positive outcome </p> <img src="img/Win.jpg"></img> ';
+            var  outimg='<p><b><font size="14">YOU get the postive outcome</b></font> </p> <img src="img/Win.jpg"></img> ';
+          }
+          else if (trial.outcome == 2){
+            //  var outimg='img/Loss.jpg';
+            //var  outimg='<p><b><font size="10">YOU</b></font> receive the negative outcome </p> <img src="img/Loss.jpg"></img> ';
+            var  outimg='<p><b><font size="14">YOU get the negative outcome</b></font> </p> <img src="img/Loss.jpg"></img> ';
+          }
+        }
+        else if (trial.getsout==2) {
+
+          var numpicked=getRndInteger(1, 4);
+          if (numpicked==1) {var numgets=num1} else if (numpicked==2) {var numgets=num2} else if (numpicked==3) {var numgets=num3} else if (numpicked==4) {var numgets=num4};
+
+          if (trial.outcome == 1) {
+            var  outimg='<p><b><font size="14">PLAYER ' +numgets+' gets the positive outcome</b></font> </p> <img src="img/Win.jpg"></img> ';
+          }
+          else if (trial.outcome == 2){
+            var  outimg='<p><b><font size="14">PLAYER ' +numgets+' gets the negative outcome</b></font> </p> <img src="img/Loss.jpg"></img> ';
+          }
+
+        }
+
+        var cond=givecond(num1,num2,num3,num4);
+        var stimstep=gamblestim(img1path,img2path);
+        var gamblefeed=gambleplay(trial.status,img1path,img2path);
+        var outcome = animateGamble(
+                trial,
+                [img1path, img2path],
+                [
+                  "Player " + num1,
+                  "Player " + num2,
+                  "You",
+                  "Player " + num3,
+                  "Player " + num4
+                ]
+        );
+        //var outcome=feedback(outimg);
+        var respjug2=scaleresp(trial.status,trial.outcome,trial.getsout,img1,img2);
+
+        task.push(cond);
+        task.push(stimstep);
+        task.push(gamblefeed);
+        //task.push(gambleload()); //change as you like!
+        task.push(outcome);
+        task.push(respjug2);
+
+      }
+    }
+    var survey_feed = {
+      type: 'survey-text',
+      questions: [{prompt :"Do you have any comments on the experiment? Things you did not understand? or anything else? Please write below "+
+                "your comments and feel free to contact me by email. If you have nothing to say, just leave the box blank and continue.", rows: 10, columns: 40}],
+      data:{label:'comments'}
+    };
+
+    var show= {
       type: 'html-button-response',
-      stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Bloc '+(bl+1)+' starting </p>'+
-      '<p style="font-size:26px; line-height:1.5 "> Are you ready ?</p>',
-      choices: ['Start'],
-      blocstart:0,
-  };
+      stimulus:'<p style="font-size:30px; line-height:2" >Thank you very much for your participation.</p> '+
+              '<p style="font-size:30px; line-height:2"> Please click on the following link to confirm you completed the study:'+
+              ' <a href="https://app.prolific.co/submissions/complete?cc=CHANGE" target="_blank"> completion link </a>.',
+      choices:['<a href="https://app.prolific.co/submissions/complete?cc=CHANGE" target="_blank"> completion link </a'],
+      data:{label:'showsubidEND'}
+    }
 
-  task.push(blocstart);
+    task.push(survey_feed)
+    task.push(show)
 
-var currentlist=trials();
+    task.push({
+      type: 'fullscreen',
+      fullscreen_mode: false
+    });
 
-for(var tr=0; tr<currentlist.length;tr++){
-
-                      trial=currentlist[tr];
-
-                      var img1=imagestoshow[(bl*20)+tr].A;
-                      var img2=imagestoshow[(bl*20)+tr].B;
-                      var img1path='stim/img'+img1 + '.jpg';
-                      var img2path='stim/img'+img2 + '.jpg';
-
-if (trial.getsout==1){
-                    if (trial.outcome == 1) {
-                    //var outimg='img/Win.jpg';
-                    //  var  outimg='<p><b><font size="10">YOU</b></font> receive the positive outcome </p> <img src="img/Win.jpg"></img> ';
-                      var  outimg='<p><b><font size="14">YOU get the postive outcome</b></font> </p> <img src="img/Win.jpg"></img> ';
-                  }
-                    else if (trial.outcome == 2){
-                    //  var outimg='img/Loss.jpg';
-                      //var  outimg='<p><b><font size="10">YOU</b></font> receive the negative outcome </p> <img src="img/Loss.jpg"></img> ';
-                      var  outimg='<p><b><font size="14">YOU get the negative outcome</b></font> </p> <img src="img/Loss.jpg"></img> ';
-                    }
-                  }
-else if (trial.getsout==2) {
-
-  var numpicked=getRndInteger(1, 4);
-  if (numpicked==1) {var numgets=num1} else if (numpicked==2) {var numgets=num2} else if (numpicked==3) {var numgets=num3} else if (numpicked==4) {var numgets=num4};
-
-if (trial.outcome == 1) {
-    var  outimg='<p><b><font size="14">PLAYER ' +numgets+' gets the positive outcome</b></font> </p> <img src="img/Win.jpg"></img> ';
-}
-else if (trial.outcome == 2){
-  var  outimg='<p><b><font size="14">PLAYER ' +numgets+' gets the negative outcome</b></font> </p> <img src="img/Loss.jpg"></img> ';
-}
-
-}
-
-                    var cond=givecond(num1,num2,num3,num4);
-                    var stimstep=gamblestim(img1path,img2path);
-                    var gamblefeed=gambleplay(trial.status,img1path,img2path);
-                    var outcome=feedback(outimg);
-                    var respjug2=scaleresp(trial.status,trial.outcome,trial.getsout,img1,img2);
-
-                    task.push(cond);
-                    task.push(stimstep);
-                    task.push(gamblefeed);
-                    task.push(gambleload()); //change as you like!
-                    task.push(outcome);
-                    task.push(respjug2);
-
-                    }
-}
-                    var survey_feed = {
-                                      type: 'survey-text',
-                                      questions: [{prompt :"Do you have any comments on the experiment? Things you did not understand? or anything else? Please write below "+
-                                      "your comments and feel free to contact me by email. If you have nothing to say, just leave the box blank and continue.", rows: 10, columns: 40}],
-                                      data:{label:'comments'}
-                                    };
-
-                    var show= {
-                        type: 'html-button-response',
-                        stimulus:'<p style="font-size:30px; line-height:2" >Thank you very much for your participation.</p> '+
-                        '<p style="font-size:30px; line-height:2"> Please click on the following link to confirm you completed the study:'+
-                        ' <a href="https://app.prolific.co/submissions/complete?cc=CHANGE" target="_blank"> completion link </a>.',
-                        choices:['<a href="https://app.prolific.co/submissions/complete?cc=CHANGE" target="_blank"> completion link </a'],
-                        data:{label:'showsubidEND'}
-                      }
-
-                    task.push(survey_feed)
-                    task.push(show)
-
-  task.push({
-    type: 'fullscreen',
-    fullscreen_mode: false
-  });
-
-var images = ['stim/img1.jpg', 'stim/img2.jpg','stim/img3.jpg','stim/img4.jpg', 'stim/img5.jpg','stim/img6.jpg','stim/img7.jpg','stim/img8.jpg', 'stim/img9.jpg','stim/img10.jpg',
-'stim/img11.jpg', 'stim/img12.jpg','stim/img13.jpg','stim/img14.jpg', 'stim/img15.jpg','stim/img16.jpg','stim/img17.jpg','stim/img18.jpg', 'stim/img19.jpg','stim/img20.jpg',
-'stim/defimg.jpg','img/Group_S.jpg','img/Loss.jpg', 'img/Win.jpg'];
+    var images = ['stim/img1.jpg', 'stim/img2.jpg','stim/img3.jpg','stim/img4.jpg', 'stim/img5.jpg','stim/img6.jpg','stim/img7.jpg','stim/img8.jpg', 'stim/img9.jpg','stim/img10.jpg',
+      'stim/img11.jpg', 'stim/img12.jpg','stim/img13.jpg','stim/img14.jpg', 'stim/img15.jpg','stim/img16.jpg','stim/img17.jpg','stim/img18.jpg', 'stim/img19.jpg','stim/img20.jpg',
+      'stim/defimg.jpg','img/Group_S.jpg','img/Loss.jpg', 'img/Win.jpg'];
 
 
-jsPsych.init({
-  timeline: task,
-  show_progress_bar: true,
-  preload_images: images,
-  on_trial_finish: function() {
-    var dend = new Date();
-    var nend = dend.getTime();
-    jsPsych.data.addProperties({datefinish: dend});
-    jsPsych.data.addProperties({timefinish: nend});
-    jsPsych.data.addProperties({subject_id: subject_id});
-    var data=JSON.parse(jsPsych.data.getLastTrialData().json());
+    jsPsych.init({
+      timeline: task,
+      show_progress_bar: true,
+      preload_images: images,
+      on_trial_finish: function() {
+        var dend = new Date();
+        var nend = dend.getTime();
+        jsPsych.data.addProperties({datefinish: dend});
+        jsPsych.data.addProperties({timefinish: nend});
+        jsPsych.data.addProperties({subject_id: subject_id});
+        var data=JSON.parse(jsPsych.data.getLastTrialData().json());
 
-    if  ((data[0].label=='scaleresp') || (data[0].label=='surveyid') || (data[0].label=='survey')|| (data[0].label=='comments')) {
-      
-            if (data[0].label=='surveyid')
-            {
+        if  ((data[0].label=='scaleresp') || (data[0].label=='surveyid') || (data[0].label=='survey')|| (data[0].label=='comments')) {
+
+          if (data[0].label=='surveyid')
+          {
             var data=JSON.parse(jsPsych.data.getLastTrialData().json());
             var prolid=data[0].responses;
             var prol=(prolid.substring(7,prolid.length-2));
             jsPsych.data.addProperties({prolificid: prol});
-            }
+          }
 
-            if (data[0].label=='survey')
-            {
+          if (data[0].label=='survey')
+          {
             var data=JSON.parse(jsPsych.data.getLastTrialData().json());
             var alldata=data[0].responses;
             var age=(alldata.substring(7,9));
             var gender=(alldata.substring(17,18));
             jsPsych.data.addProperties({age: age});
             jsPsych.data.addProperties({gender: gender});
-            }
-     var data=JSON.parse(jsPsych.data.getLastTrialData().json());
-     //console.log(data)
-     save_data_pt(data);
+          }
+          var data=JSON.parse(jsPsych.data.getLastTrialData().json());
+          //console.log(data)
+          save_data_pt(data);
 
-    }
+        }
 
 
-},
-})
+      },
+    })
 
-}
+  }
 
 </script>
 </html>

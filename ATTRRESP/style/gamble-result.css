@@ -1,0 +1,110 @@
+/* Styles for animating gamble results */
+#gamble-result {
+    --offset: 100px;
+    --position-0-x: calc(-1 * var(--offset));
+    --position-0-y: calc(-1 * var(--offset));
+    --position-1-x: var(--offset);
+    --position-1-y: calc(-1 * var(--offset));
+    --position-2-x: 0;
+    --position-2-y: 0;
+    --position-3-x: var(--offset);
+    --position-3-y: var(--offset);
+    --position-4-x: calc(-1 * var(--offset));
+    --position-4-y: var(--offset);
+
+    position: relative;
+}
+
+#gamble-result.winner-0 {--position-final-x: var(--position-0-x); --position-final-y: var(--position-0-y);}
+#gamble-result.winner-1 {--position-final-x: var(--position-1-x); --position-final-y: var(--position-1-y);}
+#gamble-result.winner-2 {--position-final-x: var(--position-2-x); --position-final-y: var(--position-2-y);}
+#gamble-result.winner-3 {--position-final-x: var(--position-3-x); --position-final-y: var(--position-3-y);}
+#gamble-result.winner-4 {--position-final-x: var(--position-4-x); --position-final-y: var(--position-4-y);}
+
+@keyframes bounce-through-all {
+    0% {left: var(--position-0-x); top: var(--position-0-y);}
+    20% {left: var(--position-1-x); top: var(--position-1-y);}
+    40% {left: var(--position-2-x); top: var(--position-2-y);}
+    60% {left: var(--position-3-x); top: var(--position-3-y);}
+    80% {left: var(--position-4-x); top: var(--position-4-y);}
+    100% {left: var(--position-final-x); top: var(--position-final-y);}
+}
+
+@keyframes fade-out-die {
+    0% {opacity: 1.0;}
+    100% {opacity: 0.0;}
+}
+
+@keyframes expand-player {
+    0% {top: var(--position-final-y); left: var(--position-final-x); transform: translate(-50%, -50%) scale(1); z-index: 5;}
+    100% {top: 0; left: calc(2 * var(--position-0-x)); transform: translate(-50%, -50%) scale(2.5); z-index: 5;}
+}
+@keyframes expand-gamble {
+    0% {top: var(--position-final-y); left: var(--position-final-x); transform: translate(-50%, -50%) scale(1); z-index: 5;}
+    100% {top: 0; left: calc(2 * var(--position-1-x)); transform: translate(-50%, -50%) scale(3); z-index: 5;}
+}
+@keyframes coin-roll {
+    0% {left: calc(2 * var(--position-1-x)); transform: translate(-50%, -50%) scale(1) rotate(360deg);}
+    80% {left: 0; transform: translate(-50%, -50%) scale(1) rotate(0deg);}
+    100% {left: 0; transform: translate(-50%, -50%) scale(2) rotate(0deg);}
+}
+
+#gamble-result.no-response > *:not(.always-show) {opacity: 0 !important;}
+#gamble-result.no-response #no-response {position: absolute; transform: translate(-50%, -50%); width: 50vw;}
+
+#gamble-result div {position: absolute;}
+#gamble-result div.player {position: absolute; transform: translate(-50%, -50%);}
+#gamble-result div.player-0 {top: var(--position-0-y); left: var(--position-0-x);}
+#gamble-result div.player-1 {top: var(--position-1-y); left: var(--position-1-x);}
+#gamble-result div.player-2 {top: var(--position-2-y); left: var(--position-2-x);}
+#gamble-result div.player-3 {top: var(--position-3-y); left: var(--position-3-x);}
+#gamble-result div.player-4 {top: var(--position-4-y); left: var(--position-4-x);}
+
+#gamble-result p {margin: 0;}
+#gamble-result #message {
+    position: absolute;
+    top: calc(-2 * var(--offset));
+    width: 50vw;
+    transform: translateX(-50%);
+}
+#gamble-result #result p {
+    position: absolute;
+    top: calc(var(--offset) / 2);
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    font-size: 1.3em;
+    z-index: 10;
+    display: none;
+}
+
+#gamble-result #gamble-img, #gamble-result #result img {
+    position: absolute;
+    height: var(--offset);
+    width: var(--offset);
+    transform: translate(-50%, -50%);
+    z-index: 5;
+}
+#gamble-result #result img.cover {
+    opacity: 1;
+    z-index: 10;
+}
+#gamble-result .player img {height: var(--offset);}
+
+#gamble-result #result {z-index: 10;}
+#gamble-result:not(.roll) #result {display: none;}
+
+#gamble-result.cycle #gamble-img {
+    animation-name: bounce-through-all;
+    animation-iteration-count: 1;
+    animation-duration: 750ms;
+    animation-fill-mode: forwards;
+}
+
+#gamble-result.zoom:not(.no-response) .player:not(.winner) {animation: fade-out-die forwards 250ms;}
+#gamble-result.zoom:not(.no-response) .player.winner {animation: expand-player forwards 250ms;}
+#gamble-result.zoom:not(.no-response) #gamble-img {animation: expand-gamble forwards 250ms;}
+
+#gamble-result.roll #result img.cover {animation: fade-out-die forwards 250ms;}
+#gamble-result.roll #result {animation: coin-roll forwards 250ms;}
+
+#gamble-result.payout #result p {display: block;}

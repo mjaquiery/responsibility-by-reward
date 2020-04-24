@@ -6,3 +6,4 @@ past-data
 *.nb.html
 ATTRESP/database_connect.php
 ATTRESP/database_config.php
+.idea
