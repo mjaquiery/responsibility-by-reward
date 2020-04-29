@@ -38,8 +38,8 @@ function animateGamble(trial_details, gamble_images, gamble_player_names) {
     return {
         type: 'jspsych-gamble-result',
         trial_details,
-        gamble_images,
         gamble_player_names,
+        //gamble_images,
         data: {label: 'animateGamble'}
     };
 }

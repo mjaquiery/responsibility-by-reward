@@ -17,19 +17,19 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
         default: undefined,
         description: 'Trial details containing status (1=majority/2=minority), getsout (1=yes/2=no), and outcome (1=yes/2=no)'
       },
-      gamble_images: {
-        type: jsPsych.plugins.parameterType.STRING,
-        pretty_name: 'Gamble image source locations',
-        default: undefined,
-        array: true,
-        description: 'The gamble offered on the choice screen.'
-      },
       gamble_player_names: {
         type: jsPsych.plugins.parameterType.STRING,
         pretty_name: 'Gamble player names',
         default: undefined,
         array: true,
         description: 'Names of the players in the gamble. Participant must be the third name.'
+      },
+      gamble_images: {
+        type: jsPsych.plugins.parameterType.STRING,
+        pretty_name: 'Gamble image source locations',
+        default: [],
+        array: true,
+        description: 'The gamble offered on the choice screen.'
       },
     }
   }
@@ -83,7 +83,10 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
       // Create the gamble image
       var gamble_img = div.appendChild(document.createElement('img'));
       gamble_img.id = 'gamble-img';
-      gamble_img.src = trial.gamble_images[gamble];
+      if(trial.gamble_images.length)
+        gamble_img.src = trial.gamble_images[gamble];
+      else
+        gamble_img.src = "img/unknown_outcome.png";
       // Create the outcome image
       var result_div = div.appendChild(document.createElement('div'));
       result_div.id = 'result';
