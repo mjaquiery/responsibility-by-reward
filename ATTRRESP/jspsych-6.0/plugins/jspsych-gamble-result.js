@@ -59,8 +59,10 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
           0 + (Math.random() < .5) : 2 + (Math.random() < .5);
     }
 
-    var result_img_src = trial.trial_details.result == 1? "img/Win.png" : "img/Loss.png";
-    var result_text = trial.trial_details.result == 1? "Win!" : "Lose!";
+    var result_img_src = trial.trial_details.outcome == 1? "img/Win.png" : "img/Loss.png";
+    var result_text = trial.trial_details.outcome == 1? "Win!" : "Lose!";
+
+    console.log(trial.trial_details)
 
     // Create the display div
     var div = display_element.appendChild(document.createElement('div'));
