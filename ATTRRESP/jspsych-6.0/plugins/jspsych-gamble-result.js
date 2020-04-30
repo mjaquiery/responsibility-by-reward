@@ -75,7 +75,7 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
       div.classList.add('no-response');
       var noresp = div.appendChild(document.createElement('p'));
       noresp.id = 'no-response';
-      noresp.innerHTML = "You did not respond in time. You have failed this round.<br/>If it is used in calculating your bonus, this round will be counted as if <strong>You</strong> got a <strong>Loss</strong>.";
+      noresp.innerHTML = "You have failed this round.<br/>If it is used in calculating your bonus, this round will be counted as if <strong>You</strong> got a <strong>Loss</strong>.";
       noresp.classList.add('always-show');
     }
     /**
@@ -145,6 +145,7 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
      */
     function coinRoll() {
       div.classList.add('roll');
+      message.innerText = "";
       setTimeout(payout, 250);
     }
 

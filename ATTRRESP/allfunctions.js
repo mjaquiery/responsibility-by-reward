@@ -66,7 +66,7 @@ function gambleplay(status,img1path,img2path) {
             //  console.log(isresp);
             //  console.log(status);
             if (isresp==null) {
-                return '<p style="font-size:26px; text-align:center;">Missed trial=You get a negative outcome. You will not see the group choice or outcome. </p>';
+                return '<p style="font-size:26px; text-align:center;">Too slow!</p>';
             }
             else {
                 if (status==1){
