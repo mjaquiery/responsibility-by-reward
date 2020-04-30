@@ -153,7 +153,7 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
      */
     function payout() {
       div.classList.add('payout');
-
+      message.innerText = "";
       setTimeout(endTrial, 3000);
     }
 
