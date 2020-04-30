@@ -49,7 +49,7 @@
     100% {left: 0; transform: translate(-50%, -50%) scale(2) rotate(0deg);}
 }
 
-#gamble-result.no-response > *:not(.always-show) {opacity: 0 !important;}
+#gamble-result.no-response > *:not(.always-show) {opacity: 0 !important; animation: none !important;}
 #gamble-result.no-response #no-response {position: absolute; transform: translate(-50%, -50%); width: 50vw;}
 
 #gamble-result div {position: absolute;}
@@ -106,5 +106,7 @@
 
 #gamble-result.roll #result img.cover {animation: fade-out-die forwards 250ms;}
 #gamble-result.roll #result {animation: coin-roll forwards 250ms;}
+#gamble-result.roll #gamble-img {animation: fade-out-die forwards 250ms;}
 
 #gamble-result.payout #result p {display: block;}
+#gamble-result.payout #gamble-img {display: none;}
