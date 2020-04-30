@@ -125,7 +125,7 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
       function cycle() {
         div.classList.add('cycle');
         message.innerText = "Selecting recipient of the gamble...";
-        setTimeout(zoom, 750);
+        setTimeout(zoom, 1000);
       }
 
       /**
@@ -145,7 +145,7 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
      */
     function coinRoll() {
       div.classList.add('roll');
-      setTimeout(payout, 250);
+      setTimeout(payout, 500);
     }
 
     /**
@@ -154,7 +154,7 @@ jsPsych.plugins["jspsych-gamble-result"] = (function() {
     function payout() {
       div.classList.add('payout');
 
-      setTimeout(endTrial, 1000);
+      setTimeout(endTrial, 3000);
     }
 
     // Run the animation
