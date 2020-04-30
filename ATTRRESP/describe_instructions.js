@@ -76,25 +76,28 @@ var instruct= {
   ' that will be depicted as images of real-life gambles such as the example below </p> <img src="img/examplepress.jpg">'+
   '<p style="font-size:24px; line-height:1.5"> You will have to press on "Gamble 1" to choose the left gamble and on "Gamble 2" to choose the right gamble.'+
   ' The images will only appear for 2 seconds, and you only have 2 seconds to make your choice.'+
-  ' Each gamble has different probabilities of winning and loosing. <b> Your aim is to find which gambles are likely to'+
+  ' Each gamble has different probabilities of winning and losing. <b> Your aim is to find which gambles are likely to'+
   ' make you win and choose them. <b> Please be aware that there is no link beween the type of image depicted (roulettes, dice, cards) and the actual probablity to win. </p>',
 
-  "<p style='font-size:24px; line-height:1.5'> 3) You will play as a group with 4 other players."+
-   "<p> You are playing with Players C, D, E and F (majority choice picked) </p>"+ "<div style='float: center;'><img src='img/Group_S.jpg'></img> "+
+  "<p style='font-size:24px; line-height:1.5'> You will play as a group with 4 other players."+
+   "<p> You are playing with Players 16, 34, 59 and 60 (majority choice picked) </p>"+ "<div style='float: center;'><img src='img/Group_S.jpg'></img> "+
     "<p style='font-size:24px; line-height:1.5'> This means that the chosen gamble will depend on a majority rule based on your choice and the choices of 4 other participants: the gamble chosen by 3 players or more will be picked."+
-  " For example, if you and 2 other players choose Gamble 1 on a given round, than Gamble 1 will be picked. The choices correspond to choices of previous players referred to as Players C, D, E and F .</p> ",
-
-  "<p style='font-size:24px; line-height:1.5'>  Only one person in the group will receive the outcome at each round. This will be determined randomly after the group decision has been made."+
-  " You will be shown at the time where you are shown whether the outcome is positive or negative, which member of the group will receive the outcome</p>",
-
-  "<p style='font-size:24px; line-height:1.5'>  <br> If the gamble chosen by your group results in a positive outcome, you or a member of your group receive 1 point of bonus.</p>"
-  + "<div style='float: center;'><img src='img/Win.jpg'></img> "+
-  "<p style='font-size:24px; line-height:1.5'> If the gamble chosen by your group results in a negative outcome, you or a member of your group get no bonus. You also lose if you don't give a choice fast enough on a given round.</p>" +
-  "<div style='float: center;'><img src='img/Loss.jpg'></img> ",
+  " For example, if you and 2 other players choose Gamble 1 on a given round, than Gamble 1 will be picked. "+"4 players among 100 previous players will be randomly picked at the beginning of the experiment to play with you."+
+  "The choices for the majority rule correspond to choices of these 4 players throughout the experiment.</p> ",
 
   "<p style='font-size:24px; line-height:1.5'> Before you see the outcome of the gamble, you will be shown which gamble was actually played, such as below </p> "+
-  "<div style='float: center;'><img src='img/Picture2.png'></img> </p> "+
-  "This means that the left gamble was played at this round. The chosen gamble may not correspond to your choice if you are in the group minority",
+  "<div style='float: center;'><img src='img/Picture2.png'></img> "+
+  "<p style='font-size:24px; line-height:1.5'> This means that the left gamble was played at this round. The chosen gamble may not correspond to your choice if you are in the group minority.</p>",
+
+  "<p style='font-size:24px; line-height:1.5'>  Only one person in the group will receive the outcome at each round. This will be determined randomly after the group decision has been made."+
+  " You will be shown which member of the group will receive the outcome as depicted on the picture below, with an example of a round where YOU received a negative outcome, and an example of a round where PLAYER 16 received a negative outcome </p>"+
+  "<div style='float: center;'><img src='img/outcomeill.jpg'></img> ",
+
+  "<p style='font-size:24px; line-height:1.5'>  <br> If the gamble chosen by your group results in a positive outcome, you or a member of your group receive(s) 1 point of bonus.</p>"
+  + "<div style='float: center;'><img src='img/Win.jpg'></img> "+
+  "<p style='font-size:24px; line-height:1.5'> If the gamble chosen by your group results in a negative outcome, you or a member of your group get(s) no bonus."+
+  "  If you don't give a choice fast enough on a given round, it counts as a round where YOU get no bonus (the round continues for the group but you are excluded from that round).</p>" +
+  "<div style='float: center;'><img src='img/Loss.jpg'></img> ",
 
   "<p style='font-size:24px; line-height:1.5'> At each round, you will have to complete a rating about your feeling of responsibility over the current round's outcome."+
   "The rating scale will be shown to you just after the outcome. Move the cursor on the scale to make your rating."+
