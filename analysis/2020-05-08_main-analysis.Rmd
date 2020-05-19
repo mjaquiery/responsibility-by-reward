@@ -6,7 +6,12 @@ output: html_document
 ---
 
 [Script run `r Sys.time()`]
-```{r}
+
+```{r, include=F}
+knitr::opts_chunk$set(echo = F)
+```
+
+```{r, include=F}
 library(checkpoint)         # Ensure CRAN packages have the right versions
 # checkpoint('2020-05-08')  # All packages will be loaded as they stood at this date
 library(tidyverse)
@@ -33,6 +38,8 @@ theme_set(theme_light() + theme(
 # Results
 
 ## Descriptive statistics
+
+Load data...
 
 ```{r read data}
 
@@ -141,15 +148,57 @@ ggplot(tmp, aes(x = subject_id, y = y)) +
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank()
   )
+
+```
+
+```{r all-rt-ridges, fig.height=14, fig.width=6}
+
+tmp <- d %>% 
+  select(subject_id, rt) %>%
+  nest(df = -subject_id) %>%
+  mutate(sum = map_dbl(df, ~ sum(.$rt)),
+         zrt = map(df, ~ scale(.$rt))) %>%
+  unnest(cols = zrt)
+tmp$subject_id <- reorder(tmp$subject_id, tmp$sum)
+  
+ggplot(tmp, aes(x = zrt, y = factor(subject_id))) +
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  geom_density_ridges(aes(fill = factor(subject_id)), alpha = .75) +
+  scale_fill_cyclical(values = scales::hue_pal()(2)) + 
+  scale_x_continuous(breaks = function(x) seq(floor(x[1]), ceiling(x[2]), 1)) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.x = element_line(colour = 'grey85')
+  )
+
+tmp <- d %>% 
+  select(subject_id, rtchoice) %>%
+  nest(df = -subject_id) %>%
+  mutate(sum = map_dbl(df, ~ sum(.$rtchoice)),
+         zrtchoice = map(df, ~ scale(.$rtchoice))) %>%
+  unnest(cols = zrtchoice)
+tmp$subject_id <- reorder(tmp$subject_id, tmp$sum)
+  
+ggplot(tmp, aes(x = zrtchoice, y = factor(subject_id))) +
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  geom_density_ridges(aes(fill = factor(subject_id)), alpha = .75) +
+  scale_fill_cyclical(values = scales::hue_pal()(2)) + 
+  scale_x_continuous(breaks = function(x) seq(floor(x[1]), ceiling(x[2]), 1)) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.x = element_line(colour = 'grey85')
+  )
   
 
 ```
 
-There's an obvious outlier here, so we should probably impose a cap of ~ 3s or so from the mean for each participant.
+There's an obvious outlier here, so we should probably impose a cap of ~ 3sd or so from the mean for each participant.
 
 ### Feeling of responsibility scale usage
 
-```{r all-rt, fig.height=14, fig.width=6}
+```{r, fig.height=14, fig.width=6}
 
 tmp <- d %>% 
   select(subject_id, response) %>%
