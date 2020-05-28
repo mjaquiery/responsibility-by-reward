@@ -1,0 +1,358 @@
+---
+title: "Analysis of new data"
+author: "Matt Jaquiery"
+date: "27/05/2020"
+output: html_document
+---
+
+[Script run `r Sys.time()`]
+
+```{r, include=F}
+knitr::opts_chunk$set(echo = F)
+```
+
+```{r, include=F}
+library(checkpoint)         # Ensure CRAN packages have the right versions
+# checkpoint('2020-05-08')  # All packages will be loaded as they stood at this date
+library(tidyverse)
+library(ggridges)
+library(ez)
+library(BayesFactor)
+theme_set(theme_light() + theme(
+  panel.grid = element_blank()
+))
+```
+
+# Introduction
+
+# Method
+
+## Open science
+
+### Preregistration
+
+### Open materials
+
+### Open data
+
+# Results
+
+## Descriptive statistics
+
+Load data...
+
+```{r read data}
+
+d <- read.csv('../data/dataEXP2_70part.csv', stringsAsFactors = F) %>% as_tibble()
+
+d
+
+```
+
+### Exclusions
+
+```{r descriptive stats}
+
+d.old <- d
+
+max_missed_trials <- 10
+max_consec_resp <- 10
+expected_trial_n <- 83
+
+# max_missed_trials
+exclude_ids <- d %>% 
+  nest(df = -subject_id) %>%
+  mutate(missed_trials = 
+           map_dbl(df, . %>% filter(is.na(rt), is.na(response), is.na(rtchoice), is.na(buttonchoice)) %>% nrow()),
+         missed_trials = missed_trials >= max_missed_trials) %>%
+  filter(missed_trials) %>%
+  select(-df)
+
+# expected_trial_n
+exclude_ids <- full_join(
+  exclude_ids, 
+  d %>%
+    nest(df = -subject_id) %>%
+    mutate(df = map_dbl(df, nrow)) %>%
+    filter(df < expected_trial_n) %>%
+    mutate(trial_count = T) %>%
+    select(-df),
+  by = "subject_id"
+  )
+
+# We now remove missed trials
+# Whether we do this BEFORE or AFTER checking consecutive responses matters
+d <- d %>% filter(!is.na(rt), !is.na(response), !is.na(rtchoice), !is.na(buttonchoice))
+
+# max_consec_resp
+exclude_ids <- full_join(
+  exclude_ids,
+  d %>% 
+    arrange(subject_id, trialnum) %>%
+    mutate(consec = sequence(rle(buttonchoice)$lengths)) %>%
+    nest(df = -subject_id) %>%
+    mutate(consec_resp = map_lgl(df, ~ any(.$consec >= max_consec_resp))) %>%
+    filter(consec_resp) %>%
+    select(-df),
+  by = "subject_id"
+)
+
+exclude_ids
+
+exclude_ids %>% 
+  mutate(unique_exclusions = 1) %>% 
+  select(unique_exclusions, everything(), -subject_id) %>% 
+  summarise_all(sum, na.rm = T)
+
+d <- d %>% 
+  filter(!(subject_id %in% exclude_ids$subject_id)) %>% 
+  mutate(
+    subject_id = factor(subject_id),
+    status = factor(status, labels = c('p_in_majority', 'p_in_minority')),
+    outcome = factor(outcome, labels = c('reward', 'no reward')),
+    getsout = factor(getsout, labels = c('rated', 'other'))
+  )
+
+# Remove trials where the participant was the receiving player
+d.all <- d %>% 
+  mutate(pgetsout = factor(
+    ifelse(playeroutnumber == "You", "pGets", "non-pGets"))
+    )
+d <- d %>% filter(playeroutnumber != "You")
+
+```
+
+Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, more than `r max_consec_resp` consecutive left or right responses, or fewer than `r expected_trial_n` trials recorded. Our final participant list contains `r length(unique(d$subject_id))` participants.
+
+### Response times
+
+Participants make two responses on a trial, choosing a gamble and indicating how responsible one of the players was for the decision. 
+
+```{r all-rt}
+
+tmp <- d %>% 
+  select(subject_id, rtchoice, rt) %>%
+  nest(df = -subject_id) %>%
+  mutate(rt = map(df, ~ mean_cl_normal(.$rt)),
+         rtchoice = map(df, ~ mean_cl_normal(.$rtchoice))) %>%
+  unnest(cols = c(rt, rtchoice), names_sep = '.')
+
+tmp <- tmp %>% 
+  select(-df) %>%
+  pivot_longer(-subject_id, names_to = c('var', 'stat'), names_sep = '\\.') %>%
+  pivot_wider(names_from = stat, values_from = value) 
+
+ggplot(tmp, aes(x = subject_id, y = y)) +
+  geom_point() + 
+  geom_errorbar(width = 0, aes(ymin = ymin, ymax = ymax)) +
+  # scale_y_continuous(limits = c(0, NA)) +
+  facet_wrap(~var, scales = 'free_y') +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+```
+
+```{r all-rt-ridges, fig.height=14, fig.width=6}
+
+tmp <- d %>% 
+  select(subject_id, rt) %>%
+  nest(df = -subject_id) %>%
+  mutate(sum = map_dbl(df, ~ sum(.$rt)),
+         zrt = map(df, ~ scale(.$rt))) %>%
+  unnest(cols = zrt)
+tmp$subject_id <- reorder(tmp$subject_id, tmp$sum)
+  
+ggplot(tmp, aes(x = zrt, y = factor(subject_id))) +
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  geom_density_ridges(aes(fill = factor(subject_id)), alpha = .75) +
+  scale_fill_cyclical(values = scales::hue_pal()(2)) + 
+  scale_x_continuous(breaks = function(x) seq(floor(x[1]), ceiling(x[2]), 1)) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.x = element_line(colour = 'grey85')
+  )
+
+tmp <- d %>% 
+  select(subject_id, rtchoice) %>%
+  nest(df = -subject_id) %>%
+  mutate(sum = map_dbl(df, ~ sum(.$rtchoice)),
+         zrtchoice = map(df, ~ scale(.$rtchoice))) %>%
+  unnest(cols = zrtchoice)
+tmp$subject_id <- reorder(tmp$subject_id, tmp$sum)
+  
+ggplot(tmp, aes(x = zrtchoice, y = factor(subject_id))) +
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  geom_density_ridges(aes(fill = factor(subject_id)), alpha = .75) +
+  scale_fill_cyclical(values = scales::hue_pal()(2)) + 
+  scale_x_continuous(breaks = function(x) seq(floor(x[1]), ceiling(x[2]), 1)) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.x = element_line(colour = 'grey85')
+  )
+  
+
+```
+
+There's an obvious outlier here, so we should probably impose a cap of ~ 3sd or so from the mean for each participant.
+
+### Feeling of responsibility scale usage
+
+```{r, fig.height=14, fig.width=6}
+
+tmp <- d %>% 
+  select(subject_id, response) %>%
+  nest(df = -subject_id) %>%
+  mutate(sum = map_dbl(df, ~ sum(.$response))) %>%
+  unnest(cols = df)
+tmp$subject_id <- reorder(tmp$subject_id, tmp$sum)
+  
+ggplot(tmp, aes(x = response, y = factor(subject_id))) +
+  geom_density_ridges(aes(fill = factor(subject_id))) +
+  scale_x_continuous(limits = c(0, 100)) +
+  scale_fill_cyclical(values = scales::hue_pal()(2)) + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+```
+
+## Inferential statistics
+
+```{r}
+dw <- .25
+d %>%
+  group_by(subject_id, status, outcome, getsout) %>% 
+  summarise(response = mean(response)) %>%
+  ggplot(aes(x = outcome, y = response, colour = getsout)) +
+  geom_hline(yintercept = 20, linetype = 'dashed') +
+  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
+  stat_summary(geom = "point", aes(group = getsout), size = 5, fun.y = mean,
+               position = position_dodge(dw)) +
+  stat_summary(geom = "errorbar", aes(group = getsout), width = 0, fun.data = mean_cl_normal,
+               position = position_dodge(dw)) +
+  stat_summary(geom = 'line', fun.y = mean, aes(group = getsout)) +
+  facet_wrap(~status, labeller = label_both)
+
+```
+
+```{r}
+
+a <- ezANOVA(
+  data = d,
+  dv = response,
+  wid = subject_id,
+  within = c(
+    outcome,
+    getsout,
+    status
+  )
+)
+
+a
+
+a.bf = anovaBF(
+  data = d,
+  formula = response ~ 
+    outcome + getsout + status + subject_id,
+  whichRandom = 'subject_id', progress = F
+)
+
+a.bf
+```
+
+### Participant included data
+
+We may have enough data to explore this with an additional factor: whether the participant was the receiving player.
+
+```{r}
+d.all %>%
+  group_by(subject_id, status, outcome, getsout, pgetsout) %>% 
+  summarise(response = mean(response)) %>%
+  ggplot(aes(x = outcome, y = response, colour = getsout)) +
+  geom_hline(yintercept = 20, linetype = 'dashed') +
+  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
+  stat_summary(geom = "point", aes(group = getsout), size = 5, fun.y = mean,
+               position = position_dodge(dw)) +
+  stat_summary(geom = "errorbar", aes(group = getsout), width = 0, fun.data = mean_cl_normal,
+               position = position_dodge(dw)) +
+  stat_summary(geom = 'line', fun.y = mean, aes(group = getsout)) +
+  facet_grid(pgetsout~status)
+
+```
+
+```{r}
+
+a <- ezANOVA(
+  data = d.all,
+  dv = response,
+  wid = subject_id,
+  within = c(
+    outcome,
+    getsout,
+    status,
+    pgetsout
+  )
+)
+
+a
+
+a.bf = anovaBF(
+  data = d.all,
+  formula = response ~ 
+    outcome + getsout + status + pgetsout + subject_id,
+  whichRandom = 'subject_id', progress = F
+)
+
+a.bf
+```
+
+# Discussion
+
+# Credits 
+
+## Acknowledgements
+
+
+
+## R Packages
+
+```{r results = 'asis'}
+# list packages
+packageNames <- (.packages())
+# don't include very core package
+packageNames <- packageNames[!(packageNames %in% 
+                                 rownames(installed.packages(
+                                   priority = "base")))]
+# but do include the base package
+packageNames <- c("base", packageNames)
+out <- NULL
+for (p in packageNames) {
+  out <- rbind(out, data.frame('Package' = p, 
+                               'Citations' = paste(format(citation(p), 
+                                                          style = 'textVersion'), 
+                                                   collapse = '<br/><br/>')))
+}
+
+as_tibble(out)
+```
+
+## Funding
+
+Marwa El Zein is funded by ... 
+
+Matt Jaquiery is funded by a studentship from the [Medical Research Council](https://mrc.ukri.org/) (reference 1943590) and the University of Oxford [Department of Experimental Psychology](https://www.psy.ox.ac.uk/) (reference 17/18_MSD_661552).
+
+## Technical details  
+
+```{r results = 'hold'}
+cat(paste('Time stamp:', Sys.time(), '\n\n'))
+cat('Runtime \n')
+proc.time()
+cat('\n')
+sessionInfo()
+```
