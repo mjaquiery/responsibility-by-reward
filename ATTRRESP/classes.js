@@ -53,6 +53,7 @@ class Player extends blueprintObject {
  * @property gambleImages {{A: number, B: number}} image ids for gambles A and B
  * @property gambleChoices {{A: Player[]|[], B: Player[]|[]}} which players chose gamble A and B respectively
  * @property status {number} whether the selected gamble is the participant's (1) or not (2)
+ * @property players {Player[]} Players in the gamble
  *
  * @method setRecipient(players: Player[]) {void} set the recipient Player according to this.getsout
  * @method toJSPsychPlugins() {Object[]} converts Trial to an array of JSPsych Plugin objects for inserting into a timeline.
@@ -60,19 +61,23 @@ class Player extends blueprintObject {
 class Trial extends blueprintObject {
     constructor(props) {
         super(props);
+        if(this.players)
+            for(let i = 0; i < this.players.length; i++)
+                this.players[i] = new Player(this.players[i]);
     }
 
     /**
      * Set the recipient Player according to this.getsout
      * @param players {Player[]} list of players in the game
      */
-    setRecipient(players) {
+    setRecipient(players = null) {
+        players = players || this.players;
         if(this.getsout === 1)
-            this.recipient = players.filter(p => p.isParticipant)[0];
+            this.recipientId = players.filter(p => p.isParticipant)[0].id;
         else {
             const options = players.filter(p => !p.isParticipant);
-            const i = getRndInteger(0, options.length);
-            this.recipient = options[i];
+            const i = getRndInteger(0, options.length - 1);
+            this.recipientId = options[i].id;
         }
     }
 
@@ -80,12 +85,20 @@ class Trial extends blueprintObject {
      * Convert Trial to an array of JSPsych Plugin objects for inserting into a timeline.
      * @return {[]}
      */
-    toJSPsychPlugins(players) {
+    toJSPsychPlugins() {
+        // Work out who is getting the outcome
+        if(!this.recipient)
+            this.setRecipient();
+
+        // Three-player setup has simpler plugin definition
+        if(this.players.length === 3)
+            return this.threePlayerPlugin();
+
         const plugins = [];
 
         // Basic setup screen
         plugins.push(
-            givecond(players.filter(p => !p.isParticipant).map(p => p.name))
+            givecond(this.players.filter(p => !p.isParticipant).map(p => p.name))
         );
         plugins.push(
             gamblestim(`stim/img${this.gamble_images.A}.jpg`,
@@ -98,7 +111,7 @@ class Trial extends blueprintObject {
             animateGamble(
                 this,
                 [this.gamble_images.A, this.gamble_images.B],
-                players.map(p => p.name))
+                this.players.map(p => p.name))
         );
         plugins.push(
             scaleresp(
@@ -110,6 +123,42 @@ class Trial extends blueprintObject {
         );
 
         return plugins;
+    }
+
+    get participant() {
+        return this.players.filter(p => p.isParticipant)[0];
+    }
+
+    getPlayerById(id) {
+        id = parseInt(id);
+        return this.players.filter(p => p.id === id)[0];
+    }
+
+    get recipient() {
+        return this.getPlayerById(this.recipientId);
+    }
+
+    get resultString() {
+        return `${this.recipient.name} get${this.recipient.isParticipant? "" : "s"} the outcome: ${this.outcome === 2? "No " : ""} Reward!`;
+    }
+
+    /**
+     * Return a JSPsych plugin for this Trial using three-player-gamble
+     * @return {{}[]}
+     */
+    threePlayerPlugin() {
+        return [{
+            type: 'three-player-gamble',
+            trial: this,
+            // Timings
+            intro_duration: 1000,
+            gamble_choice_duration: 2000,
+            gamble_choice_result_duration: 1000,
+            data: {
+                trial_number: this.trial,
+                label: 'threePlayerGamble'
+            }
+        }];
     }
 }
 

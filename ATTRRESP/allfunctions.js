@@ -307,6 +307,7 @@ function generatePlayers(playerCount) {
         middleIndex = Math.random() < .5? Math.floor(middleIndex) : Math.ceil(middleIndex);
 
     players.splice(middleIndex, 0, new Player());
+    players.forEach((p, i) => p.id = i);
     return players;
 }
 

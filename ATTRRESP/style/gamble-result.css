@@ -14,6 +14,14 @@
 
     position: relative;
 }
+#gamble-result[data-player-count="3"] {
+    --position-0-x: calc(-1 * var(--offset));
+    --position-0-y: var(--offset);
+    --position-1-x: 0;
+    --position-1-y: calc(-1 * var(--offset));
+    --position-2-x: var(--offset);
+    --position-2-y: var(--offset);
+}
 
 #gamble-result.winner-0 {--position-final-x: var(--position-0-x); --position-final-y: var(--position-0-y);}
 #gamble-result.winner-1 {--position-final-x: var(--position-1-x); --position-final-y: var(--position-1-y);}
@@ -52,7 +60,7 @@
 #gamble-result.no-response > *:not(.always-show) {opacity: 0 !important; animation: none !important;}
 #gamble-result.no-response #no-response {position: absolute; transform: translate(-50%, -50%); width: 50vw;}
 
-#gamble-result div {position: absolute;}
+#gamble-result > div {position: absolute;}
 #gamble-result div.player {position: absolute; transform: translate(-50%, -50%);}
 #gamble-result div.player-0 {top: var(--position-0-y); left: var(--position-0-x);}
 #gamble-result div.player-1 {top: var(--position-1-y); left: var(--position-1-x);}
@@ -110,3 +118,71 @@
 
 #gamble-result.payout #result p {display: block;}
 #gamble-result.payout #gamble-img {display: none;}
+
+/* Additional three-player-gamble plugin support */
+#gamble-result.intro.choice:not(.result) > div.player {visibility: hidden;}
+
+.choice:not(.result) #gamble-choice {visibility: visible;}
+#gamble-choice {
+    width: 100%;
+    height: 100%;
+    visibility: hidden;
+}
+.gamble-icons {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+}
+img.gamble-icon {
+    margin: 1em;
+    cursor: pointer;
+}
+img.gamble-icon.unchosen {cursor: not-allowed;}
+
+.gamble-icons > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    place-content: flex-end;
+}
+.votes {position: absolute; display: flex;}
+#gamble-result .votes > div {
+    width: 100px;
+    transform: none;
+    position: static;
+    margin: 0 .5em;
+}
+.votes > div p {background-color: var(--background-color); border: 1px solid black;}
+.votes img {max-width: 100%;}
+
+#gamble-result.payout:not(.no-response):not(.ratings) #message {
+    font-size: 1.6em;
+    font-weight: bold;
+}
+
+#gamble-result.zoom.ratings .player.winner {animation: none;}
+#gamble-result.zoom.ratings .player.non-winner {animation: none;}
+
+#gamble-result.roll.ratings #result {visibility: hidden;}
+
+.player input[type="range"] {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+.player.changed p {color: lightgrey;}
+
+.labels {
+    visibility: hidden;
+    display: flex;
+    width: 100%;
+    position: absolute;
+    transform: translateY(.5em);
+}
+.labels > p {position: absolute; width: 100%;}
+.labels > p:first-child {left: -100%;}
+.labels > p:last-child {left: 100%;}
+.slider:hover .labels {visibility: visible;}

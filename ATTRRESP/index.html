@@ -25,6 +25,7 @@
   <script src="classes.js" type="module"></script>
   <script src="allfunctions.js" type="module"></script>
   <script src="describe_instructions.js" type="module"></script>
+  <script src="jspsych-6.0/plugins/three-player-gamble.js" type="module"></script>
   <script src="jspsych-6.0/plugins/jspsych-gamble-result.js"></script>
   <link rel="stylesheet" href="style/gamble-result.css"/>
 
@@ -61,8 +62,9 @@
       100% { transform: rotate(360deg); }
     }
 
-    body {background-color:#979A9A;
-
+    body {
+      --background-color: #979A9A;
+      background-color: var(--background-color);
     }
 
   </style>
@@ -100,8 +102,9 @@
     /**
      * Build and run the experiment
      */
-    const blockTrialCounts = [3, 3, 3];
-    const playerCount = 5; // Number of players including the participant
+    const blockCount = 2;
+    const playerCount = 3; // Number of players including the participant
+    const trialList = trials();
 
     const players = generatePlayers(playerCount);
 
@@ -115,14 +118,13 @@
 
     const data_table = "ThreePlayer"; // change this for different experiments
 
-    const task = [...getExperimentPrematter(true)];
+    const task = []//...getExperimentPrematter(true)];
 
     const expStart = {
       type: 'html-button-response',
-      // Only the first blockTrialCounts value gets told to the participant for coding convenience.
       stimulus:`
 <p style="font-size:30px; text-align:center;">Experiment starting</p>
-<p style="font-size:26px; line-height:1.5 ">You will play ${blockTrialCounts.length} blocs of ${blockTrialCounts[0]} rounds. You can take a break after each bloc.</p>
+<p style="font-size:26px; line-height:1.5 ">You will play ${blockCount} blocks of ${trialList.length} rounds. You can take a break after each block.</p>
 `,
       choices: ['Start'],
       post_trial_gap:0,
@@ -136,17 +138,15 @@
      * Construct the blocks.
      * Each block has an introduction and bunch of trials.
      */
-    for(let bl = 0; bl < blockTrialCounts.length; bl++){
+    for(let bl = 0; bl < blockCount; bl++){
       task.push({
         type: 'html-button-response',
         stimulus:`
-<p style="font-size:30px; text-align:center;">Bloc ${bl+1} starting </p>
+<p style="font-size:30px; text-align:center;">Block ${bl+1} starting </p>
 <p style="font-size:26px; line-height:1.5 ">Are you ready?</p>`,
         choices: ['Start'],
-        blocstart: 0,
+        blockstart: 0,
       });
-
-      const trialList = trials();
 
       /**
        * Construct the trials.
@@ -159,11 +159,11 @@
 
         const trial = new Trial({
           ...trialList[tr],
-          gamble_images: images[(bl*20) + tr] // images repeat each block
+          gamble_images: images[(bl*20) + tr], // images repeat each block
+          players: players
         });
-        trial.setRecipient(players);
 
-        task.push(...trial.toJSPsychPlugins(players));
+        task.push(...trial.toJSPsychPlugins());
         }
     }
 
@@ -179,7 +179,7 @@
       stimulus:'<p style="font-size:30px; line-height:2" >Thank you very much for your participation.</p> '+
               '<p style="font-size:30px; line-height:2"> Please click on the following link to confirm you completed the study:'+
               ' <a href="https://app.prolific.co/submissions/complete?cc=CHANGE" target="_blank"> completion link </a>.',
-      choices:['<a href="https://app.prolific.co/submissions/complete?cc=CHANGE" target="_blank"> completion link </a'],
+      choices:['<a href="https://app.prolific.co/submissions/complete?cc=CHANGE" target="_blank"> completion link </a>'],
       data:{label:'showsubidEND'}
     };
 
@@ -193,7 +193,8 @@
 
     var imageSrcList = ['stim/img1.jpg', 'stim/img2.jpg','stim/img3.jpg','stim/img4.jpg', 'stim/img5.jpg','stim/img6.jpg','stim/img7.jpg','stim/img8.jpg', 'stim/img9.jpg','stim/img10.jpg',
       'stim/img11.jpg', 'stim/img12.jpg','stim/img13.jpg','stim/img14.jpg', 'stim/img15.jpg','stim/img16.jpg','stim/img17.jpg','stim/img18.jpg', 'stim/img19.jpg','stim/img20.jpg',
-      'stim/defimg.jpg','img/Group_S.jpg','img/Loss.jpg', 'img/Win.jpg'];
+      'stim/defimg.jpg','img/Group_S.jpg','img/Loss.jpg', 'img/Win.jpg',
+    'img/Self_single.png', 'img/Other_single.png'];
 
 
     jsPsych.init({

@@ -183,7 +183,7 @@
       type: 'html-button-response',
       // Only the first blockTrialCounts value gets told to the participant for coding convenience.
       stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Experiment starting </p>'+
-              '<p style="font-size:26px; line-height:1.5 "> You will play '+blockTrialCounts.length+' blocs of '+blockTrialCounts[0]+' rounds. You can take a break after each bloc.</p>',
+              '<p style="font-size:26px; line-height:1.5 "> You will play '+blockTrialCounts.length+' blocks of '+blockTrialCounts[0]+' rounds. You can take a break after each block.</p>',
       choices: ['Start'],
       post_trial_gap:0,
     };
@@ -213,15 +213,15 @@
      */
     for(var bl=0; bl<blockTrialCounts.length;bl++){
 
-      var blocstart= {
+      var blockstart= {
         type: 'html-button-response',
-        stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Bloc '+(bl+1)+' starting </p>'+
+        stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Block '+(bl+1)+' starting </p>'+
                 '<p style="font-size:26px; line-height:1.5 "> Are you ready ?</p>',
         choices: ['Start'],
-        blocstart:0,
+        blockstart:0,
       };
 
-      task.push(blocstart);
+      task.push(blockstart);
 
       var currentlist=trials();
 
