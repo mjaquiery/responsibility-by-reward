@@ -340,12 +340,12 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                     okay = false;
             });
             if(okay) {
-                display_element.innerHTML = "";
                 endTrial();
             }
         }
 
         function endTrial() {
+            display_element.innerHTML = "";
             data.time_ratings_end = performance.now();
             // Extract the key data for saving!
             data.gamble_choice_A = T.gamble_images.A;
