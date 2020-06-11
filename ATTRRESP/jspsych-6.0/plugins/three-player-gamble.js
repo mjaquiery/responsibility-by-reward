@@ -29,11 +29,18 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 pretty_name: 'Gamble choice duration',
                 default: 2000,
                 description: 'How the gamble choice screen lasts'
+            },
+            gamble_choice_result_duration: {
+                type: jsPsych.plugins.parameterType.INT,
+                pretty_name: 'Gamble choice result duration',
+                default: 2000,
+                description: 'How the votes are shown on the gamble choice screen'
             }
         }
     };
 
     plugin.trial = function(display_element, trial) {
+        const T = new Trial(trial.trial);
         const data = {
             time_intro_start: null,
             time_intro_end: null,
@@ -46,9 +53,9 @@ jsPsych.plugins["three-player-gamble"] = (function() {
             time_result_end: null,
             time_ratings_start: null,
             time_ratings_end: null,
+            participant_id: T.participant.id,
             ...trial.data
         };
-        const T = new Trial(trial.trial);
 
         /**
          * Show the initial setup with the players sitting in their positions
@@ -74,9 +81,11 @@ jsPsych.plugins["three-player-gamble"] = (function() {
             );
             player.dataset.playerId = p.id;
             player.innerHTML = `
-<img src="img/${p.isParticipant? "Self" : "Other"}_single.png"/>
-<p>${p.name}</p>
-            `;
+<div>
+    <img src="img/${p.isParticipant? "Self" : "Other"}_single.png"/>
+    <p>${p.name}</p>
+</div>
+`;
         });
         const messageP = resultDiv.appendChild(
             document.createElement('p')
@@ -154,7 +163,7 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 // Unchosen option
                 const x = T.participant.vote === "A"? "B" : "A";
                 // Calculate where votes should go.
-                if(!trial.status) {
+                if(!T.status) {
                     // Both others vote against participant
                     T.players
                         .filter(p => !p.isParticipant)
@@ -306,14 +315,14 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 endTrial();
                 return;
             }
-            messageP.innerHTML = `How responsible was each player for the group decision?`;
+            messageP.innerHTML = `Hover over each player to rate their <strong>responsibility</strong> for the group decision`;
             resultDiv.classList.add('ratings');
             document.querySelectorAll('.player').forEach(e => {
                 const div = e.appendChild(document.createElement('div'));
                 div.classList.add('slider');
                 const labels = div.appendChild(document.createElement('div'));
                 labels.classList.add('labels');
-                ['Not at all', 'Partially', 'Very much'].forEach(L => {
+                ['Not at all', 'Very much'].forEach(L => {
                     const p = labels.appendChild(
                         document.createElement('p')
                     );

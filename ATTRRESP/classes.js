@@ -150,10 +150,6 @@ class Trial extends blueprintObject {
         return [{
             type: 'three-player-gamble',
             trial: this,
-            // Timings
-            intro_duration: 1000,
-            gamble_choice_duration: 2000,
-            gamble_choice_result_duration: 1000,
             data: {
                 trial_number: this.trial,
                 label: 'threePlayerGamble'

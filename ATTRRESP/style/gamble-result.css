@@ -72,7 +72,7 @@
 #gamble-result #message {
     position: absolute;
     top: calc(-2 * var(--offset));
-    width: 50vw;
+    width: 100vw;
     transform: translateX(-50%);
 }
 #gamble-result #result p {
@@ -175,14 +175,20 @@ img.gamble-icon.unchosen {cursor: not-allowed;}
 }
 .player.changed p {color: lightgrey;}
 
-.labels {
+.slider {
     visibility: hidden;
+    position: absolute;
+    width: calc(1.5 * var(--offset));
+    left: calc(-.25 * var(--offset));
+    transform: translateY(calc(-1 * var(--offset)));
+}
+.player:hover .slider {visibility: visible;}
+.labels {
     display: flex;
     width: 100%;
     position: absolute;
-    transform: translateY(.5em);
 }
 .labels > p {position: absolute; width: 100%;}
-.labels > p:first-child {left: -100%;}
-.labels > p:last-child {left: 100%;}
-.slider:hover .labels {visibility: visible;}
+.labels > p:first-child {left: calc(-100% - .5em); text-align: right;}
+.labels > p:last-child {left: calc(100% + .5em); text-align: left;}
+
