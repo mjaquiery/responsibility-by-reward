@@ -57,7 +57,7 @@
     100% {left: 0; transform: translate(-50%, -50%) scale(2) rotate(0deg);}
 }
 
-#gamble-result.no-response > *:not(.always-show) {opacity: 0 !important; animation: none !important;}
+#gamble-result.no-response > *:not(.always-show) {display: none !important; opacity: 0 !important; animation: none !important;}
 #gamble-result.no-response #no-response {position: absolute; transform: translate(-50%, -50%); width: 50vw;}
 
 #gamble-result > div {position: absolute;}
