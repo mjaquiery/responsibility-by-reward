@@ -64,6 +64,7 @@ class Trial extends blueprintObject {
         if(this.players)
             for(let i = 0; i < this.players.length; i++)
                 this.players[i] = new Player(this.players[i]);
+        this.label = this.label || 'threePlayerGamble';
     }
 
     /**
@@ -152,7 +153,7 @@ class Trial extends blueprintObject {
             trial: this,
             data: {
                 trial_number: this.trial,
-                label: 'threePlayerGamble'
+                label: this.label
             }
         }];
     }

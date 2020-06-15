@@ -77,7 +77,7 @@
 
 <script type="module">
 
-  import {getBrowserInfo, generatePlayers, getExperimentPrematter, save_data_pt} from "./allfunctions.js";
+  import {getBrowserInfo, generatePlayers, getExperimentPrematter, save_data_pt, getRndInteger} from "./allfunctions.js";
   import {Trial} from "./classes.js"
 
   const browserInfo = getBrowserInfo();
@@ -106,6 +106,7 @@
     const blockCount = 2;
     const playerCount = 3; // Number of players including the participant
     const trialList = trials();
+    const images = imgcomb();
 
     const players = generatePlayers(playerCount);
 
@@ -121,6 +122,22 @@
 
     const task = []//...getExperimentPrematter(true)];
 
+    // Make some training trials
+    const trainingTrailCount = 2;
+    for(let tt = 0; tt < trainingTrailCount; tt++) {
+      // Pick a random trial from trialist to use
+      const i = getRndInteger(0, trialList.length - 1);
+      const trial = new Trial({
+        ...trialList[i],
+        gamble_images: images[i], // images repeat each block
+        players: players,
+        label: 'threePlayerGambleTraining'
+      });
+
+      task.push(...trial.toJSPsychPlugins());
+    }
+
+
     const expStart = {
       type: 'html-button-response',
       stimulus:`
@@ -132,8 +149,6 @@
     };
 
     task.push(expStart);
-
-    const images = imgcomb();
 
     /**
      * Construct the blocks.
