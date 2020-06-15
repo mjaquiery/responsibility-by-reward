@@ -54,6 +54,11 @@ jsPsych.plugins["three-player-gamble"] = (function() {
             time_ratings_start: null,
             time_ratings_end: null,
             participant_id: T.participant.id,
+            outcome: T.outcome,
+            getsout: T.getsout,
+            status: T.status,
+            gamble_choice_A: T.gamble_images.A,
+            gamble_choice_B: T.gamble_images.B,
             ...trial.data
         };
 
@@ -359,8 +364,6 @@ jsPsych.plugins["three-player-gamble"] = (function() {
             display_element.innerHTML = "";
             data.time_ratings_end = performance.now();
             // Extract the key data for saving!
-            data.gamble_choice_A = T.gamble_images.A;
-            data.gamble_choice_B = T.gamble_images.B;
             T.players.forEach(p => {
                data[`responsibility_rating_p${p.id}`] = p.responsibilityRating;
                data[`responsibility_time_p${p.id}`] = p.responsibilityTime;

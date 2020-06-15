@@ -122,6 +122,18 @@
 
     const task = []//...getExperimentPrematter(true)];
 
+    const expStart = {
+      type: 'html-button-response',
+      stimulus:`
+<p style="font-size:30px; text-align:center;">Experiment starting</p>
+<p style="font-size:26px; line-height:1.5 ">You will play ${blockCount} blocks of ${trialList.length} rounds. You can take a break after each block.</p>
+`,
+      choices: ['Start'],
+      post_trial_gap:0,
+    };
+
+    task.push(expStart);
+
     // Make some training trials
     const trainingTrailCount = 2;
     for(let tt = 0; tt < trainingTrailCount; tt++) {
@@ -136,19 +148,6 @@
 
       task.push(...trial.toJSPsychPlugins());
     }
-
-
-    const expStart = {
-      type: 'html-button-response',
-      stimulus:`
-<p style="font-size:30px; text-align:center;">Experiment starting</p>
-<p style="font-size:26px; line-height:1.5 ">You will play ${blockCount} blocks of ${trialList.length} rounds. You can take a break after each block.</p>
-`,
-      choices: ['Start'],
-      post_trial_gap:0,
-    };
-
-    task.push(expStart);
 
     /**
      * Construct the blocks.
