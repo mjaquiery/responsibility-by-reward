@@ -130,3 +130,28 @@ function trials() {
     allTrials = jsPsych.randomization.repeat(allTrials ,1);
     return allTrials;
 }
+
+/**
+ * Return the blueprint structure for a block of trials.
+ * Blueprints specify a trial id, an outcome, a status, and which player gets the outcome. All of these are repeated a given number of times and shuffled.
+ * @param repetitions
+ */
+function threePlayerTrialStructure(repetitions = 1) {
+    let blueprints = [];
+    let i = 1;
+    const outcomes = [1, 2];
+    const statuses = [1, 2];
+    const recipients = [0, 1, 2];
+
+    for(let o of outcomes)
+        for(let s of statuses)
+            for(let r of recipients)
+                blueprints.push({
+                    trial: i++,
+                    outcome: o,
+                    status: s,
+                    getsout: r
+                });
+
+    return jsPsych.randomization.repeat(blueprints, repetitions);
+}

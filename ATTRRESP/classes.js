@@ -48,7 +48,7 @@ class Player extends blueprintObject {
  * @class Trial
  * @property trialNumber {number} trial number
  * @property outcome {number} whether the outcome is reward (1) or no reward (2)
- * @property getsout {number} whether the participant (1) or another player (2) gets the outcome
+ * @property getsout {number} index of the player who gets the outcome (0-2)
  * @property recipient {Player} Player designated to receive the outcome
  * @property gambleImages {{A: number, B: number}} image ids for gambles A and B
  * @property gambleChoices {{A: Player[]|[], B: Player[]|[]}} which players chose gamble A and B respectively
@@ -65,21 +65,8 @@ class Trial extends blueprintObject {
             for(let i = 0; i < this.players.length; i++)
                 this.players[i] = new Player(this.players[i]);
         this.label = this.label || 'threePlayerGamble';
-    }
-
-    /**
-     * Set the recipient Player according to this.getsout
-     * @param players {Player[]} list of players in the game
-     */
-    setRecipient(players = null) {
-        players = players || this.players;
-        if(this.getsout === 1)
-            this.recipientId = players.filter(p => p.isParticipant)[0].id;
-        else {
-            const options = players.filter(p => !p.isParticipant);
-            const i = getRndInteger(0, options.length - 1);
-            this.recipientId = options[i].id;
-        }
+        if(this.getsout && this.players && typeof this.recipientId === "undefined")
+            this.recipientId = this.players[this.getsout].id;
     }
 
     /**
@@ -87,9 +74,6 @@ class Trial extends blueprintObject {
      * @return {[]}
      */
     toJSPsychPlugins() {
-        // Work out who is getting the outcome
-        if(!this.recipient)
-            this.setRecipient();
 
         // Three-player setup has simpler plugin definition
         if(this.players.length === 3)

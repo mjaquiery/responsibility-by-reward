@@ -105,7 +105,8 @@
      */
     const blockCount = 2;
     const playerCount = 3; // Number of players including the participant
-    const trialList = trials();
+    const repetitionsPerBlock = 2;
+    const trialList = threePlayerTrialStructure(repetitionsPerBlock);
     const images = imgcomb();
 
     const players = generatePlayers(playerCount);
@@ -209,7 +210,7 @@
     var imageSrcList = ['stim/img1.jpg', 'stim/img2.jpg','stim/img3.jpg','stim/img4.jpg', 'stim/img5.jpg','stim/img6.jpg','stim/img7.jpg','stim/img8.jpg', 'stim/img9.jpg','stim/img10.jpg',
       'stim/img11.jpg', 'stim/img12.jpg','stim/img13.jpg','stim/img14.jpg', 'stim/img15.jpg','stim/img16.jpg','stim/img17.jpg','stim/img18.jpg', 'stim/img19.jpg','stim/img20.jpg',
       'stim/defimg.jpg','img/Group_S.jpg','img/Loss.jpg', 'img/Win.jpg',
-    'img/Self_single.png', 'img/Other_single.png'];
+    'img/player-0.png', 'img/player-1.png', 'img/player-2.png'];
 
 
     jsPsych.init({
