@@ -290,9 +290,9 @@ jsPsych.plugins["three-player-gamble"] = (function() {
          */
         function setAnimationTimes() {
             const style = document.getElementById('gamble-result').style;
-            style.setProperty('--duration-cycle', trial.gamble_animation_cycle_duration);
-            style.setProperty('--duration-zoom', trial.gamble_animation_zoom_duration);
-            style.setProperty('--duration-roll', trial.gamble_animation_roll_duration);
+            style.setProperty('--duration-cycle', trial.gamble_animation_cycle_duration.toString() + 'ms');
+            style.setProperty('--duration-zoom', trial.gamble_animation_zoom_duration.toString() + 'ms');
+            style.setProperty('--duration-roll', trial.gamble_animation_roll_duration.toString() + 'ms');
         }
 
         /**
