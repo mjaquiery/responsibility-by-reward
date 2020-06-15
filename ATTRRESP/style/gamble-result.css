@@ -148,7 +148,8 @@ img.gamble-icon.unchosen {cursor: not-allowed;}
     align-items: center;
     place-content: flex-end;
 }
-.votes {position: absolute; display: flex;}
+.votes {position: absolute; display: none;}
+.votes.show {display: flex;}
 #gamble-result .votes > div {
     width: 100px;
     transform: none;

@@ -183,6 +183,8 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                             if(p.vote === e.dataset.gamble)
                                 addVoterIcon(e, p);
                         });
+                        e.parentElement.querySelector('.votes')
+                            .classList.add('show');
                     });
             }
             setTimeout(gambleResult, trial.gamble_choice_result_duration);
