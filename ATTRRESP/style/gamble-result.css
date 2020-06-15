@@ -12,6 +12,11 @@
     --position-4-x: calc(-1 * var(--offset));
     --position-4-y: var(--offset);
 
+    /* Animation timings */
+    --duration-cycle: 750ms;
+    --duration-zoom: 250ms;
+    --duration-roll: 250ms;
+
     position: relative;
 }
 #gamble-result[data-player-count="3"] {
@@ -104,17 +109,17 @@
 #gamble-result.cycle #gamble-img {
     animation-name: bounce-through-all;
     animation-iteration-count: 1;
-    animation-duration: 750ms;
+    animation-duration: var(--duration-cycle);
     animation-fill-mode: forwards;
 }
 
-#gamble-result.zoom:not(.no-response) .player:not(.winner) {animation: fade-out-die forwards 250ms;}
-#gamble-result.zoom:not(.no-response) .player.winner {animation: expand-player forwards 250ms;}
-#gamble-result.zoom:not(.no-response) #gamble-img {animation: expand-gamble forwards 250ms;}
+#gamble-result.zoom:not(.no-response) .player:not(.winner) {animation: fade-out-die forwards var(--duration-zoom);}
+#gamble-result.zoom:not(.no-response) .player.winner {animation: expand-player forwards var(--duration-zoom);}
+#gamble-result.zoom:not(.no-response) #gamble-img {animation: expand-gamble forwards var(--duration-zoom);}
 
-#gamble-result.roll #result img.cover {animation: fade-out-die forwards 250ms;}
-#gamble-result.roll #result {animation: coin-roll forwards 250ms;}
-#gamble-result.roll #gamble-img {animation: fade-out-die forwards 250ms;}
+#gamble-result.roll #result img.cover {animation: fade-out-die forwards var(--duration-roll);}
+#gamble-result.roll #result {animation: coin-roll forwards var(--duration-roll);}
+#gamble-result.roll #gamble-img {animation: fade-out-die forwards var(--duration-roll);}
 
 #gamble-result.payout #result p {display: block;}
 #gamble-result.payout #gamble-img {display: none;}

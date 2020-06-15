@@ -35,6 +35,30 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 pretty_name: 'Gamble choice result duration',
                 default: 2000,
                 description: 'How the votes are shown on the gamble choice screen'
+            },
+            gamble_animation_cycle_duration: {
+                type: jsPsych.plugins.parameterType.INT,
+                pretty_name: 'Animation cycle component duration',
+                default: 750,
+                description: 'How long the unknown outcome spends cycling between players'
+            },
+            gamble_animation_zoom_duration: {
+                type: jsPsych.plugins.parameterType.INT,
+                pretty_name: 'Animation zoom component duration',
+                default: 250,
+                description: 'How long the zooming in on the recipient takes'
+            },
+            gamble_animation_roll_duration: {
+                type: jsPsych.plugins.parameterType.INT,
+                pretty_name: 'Animation roll component duration',
+                default: 250,
+                description: 'How long the outcome reveal takes'
+            },
+            result_display_duration: {
+                type: jsPsych.plugins.parameterType.INT,
+                pretty_name: 'Result display duration',
+                default: 3000,
+                description: 'How long the result display lasts'
             }
         }
     };
@@ -87,7 +111,7 @@ jsPsych.plugins["three-player-gamble"] = (function() {
             player.dataset.playerId = p.id;
             player.innerHTML = `
 <div>
-    <img src="img/${p.isParticipant? "Self" : "Other"}_single.png"/>
+    <img src="img/player-${p.id}.png"/>
     <p>${p.name}</p>
 </div>
 `;
@@ -222,6 +246,7 @@ jsPsych.plugins["three-player-gamble"] = (function() {
          * Animate the recipient selection process and reveal the outcome.
          */
         function gambleResult() {
+            setAnimationTimes();
             resultDiv.classList.add('result');
             messageP.innerHTML = `Picking who gets the outcome...`;
             data.time_choice_result_end = performance.now();
@@ -261,6 +286,16 @@ jsPsych.plugins["three-player-gamble"] = (function() {
         }
 
         /**
+         * Set animation times in CSS
+         */
+        function setAnimationTimes() {
+            const style = document.getElementById('gamble-result').style;
+            style.setProperty('--duration-cycle', trial.gamble_animation_cycle_duration);
+            style.setProperty('--duration-zoom', trial.gamble_animation_zoom_duration);
+            style.setProperty('--duration-roll', trial.gamble_animation_roll_duration);
+        }
+
+        /**
          * Play the gamble-to-player assignment animation
          */
         function selectParticipant() {
@@ -272,7 +307,7 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 const message = document.getElementById('message');
                 div.classList.add('cycle');
                 message.innerText = "Selecting recipient of the gamble...";
-                setTimeout(zoom, 750);
+                setTimeout(zoom, trial.gamble_animation_cycle_duration);
             }
 
             /**
@@ -283,7 +318,7 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 const message = document.getElementById('message');
                 div.classList.add('zoom');
                 message.innerText = "Checking gamble result...";
-                setTimeout(coinRoll, 250);
+                setTimeout(coinRoll, trial.gamble_animation_zoom_duration);
             }
 
             cycle();
@@ -295,7 +330,7 @@ jsPsych.plugins["three-player-gamble"] = (function() {
         function coinRoll() {
             const div = document.getElementById('gamble-result');
             div.classList.add('roll');
-            setTimeout(payout, 250);
+            setTimeout(payout, trial.gamble_animation_roll_duration);
         }
 
         /**
@@ -307,7 +342,7 @@ jsPsych.plugins["three-player-gamble"] = (function() {
             div.classList.add('payout');
             message.innerText = (!T.participant.vote)?
                 `Showing gamble result` : T.resultString;
-            setTimeout(getRatings, 3000);
+            setTimeout(getRatings, trial.result_display_duration);
         }
 
         /**
