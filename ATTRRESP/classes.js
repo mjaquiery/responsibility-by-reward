@@ -65,7 +65,9 @@ class Trial extends blueprintObject {
             for(let i = 0; i < this.players.length; i++)
                 this.players[i] = new Player(this.players[i]);
         this.label = this.label || 'threePlayerGamble';
-        if(this.getsout && this.players && typeof this.recipientId === "undefined")
+        if(typeof this.getsout !== "undefined" &&
+            this.players &&
+            typeof this.recipientId === "undefined")
             this.recipientId = this.players[this.getsout].id;
     }
 
