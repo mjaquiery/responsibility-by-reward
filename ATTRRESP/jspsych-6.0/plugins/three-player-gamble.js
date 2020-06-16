@@ -162,15 +162,17 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 return;
             data.time_choice_made = performance.now();
             T.participant.vote = event.currentTarget.dataset.gamble;
-            // Remove other icons
-            display_element.querySelectorAll('img.gamble-icon')
+            // Show the participant's vote so they get feedback on the action
+            document.querySelectorAll('.gamble-icon')
                 .forEach(e => {
-                    if(e.id !== event.currentTarget.id) {
-                        e.src = "stim/defimg.jpg";
-                        e.classList.add('unchosen');
-                    } else
-                        e.classList.add('chosen');
                     e.removeEventListener('click', processGambleChoice);
+                    if(T.participant.vote === e.dataset.gamble) {
+                        addVoterIcon(e, T.participant);
+                        e.classList.add('participant-vote');
+                    } else
+                        e.classList.add('participant-spurned');
+                    e.parentElement.querySelector('.votes')
+                        .classList.add('show');
                 });
             messageP.innerHTML = `Awaiting other votes...`;
         }
@@ -206,15 +208,19 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                     players[1].vote = Math.random() < .5? c : x;
                 }
                 // Draw player icons on the gamble they voted for
-                document.querySelectorAll('.gamble-icon')
+                document.querySelectorAll('img.gamble-icon')
                     .forEach(e => {
                         T.players.forEach(p => {
-                            if(p.vote === e.dataset.gamble)
+                            if(p.vote === e.dataset.gamble && !p.isParticipant)
                                 addVoterIcon(e, p);
                         });
-                        e.parentElement.querySelector('.votes')
-                            .classList.add('show');
                     });
+                document.querySelectorAll('img.gamble-icon').forEach(e => e.classList.add('chosen'));
+                // Remove icon of unchosen gamble
+                const unchosenGambleImg = display_element.querySelector(`img.gamble-icon[data-gamble="${T.status === 1? x : c}"]`);
+                unchosenGambleImg.src = "stim/defimg.jpg";
+                unchosenGambleImg.classList.add('unchosen');
+                unchosenGambleImg.classList.remove('chosen');
             }
             setTimeout(gambleResult, trial.gamble_choice_result_duration);
         }
