@@ -145,7 +145,7 @@ img.gamble-icon {
     margin: 1em;
     cursor: pointer;
 }
-img.gamble-icon.unchosen {cursor: not-allowed;}
+img.gamble-icon.participant-spurned {cursor: not-allowed;}
 
 .gamble-icons > div {
     display: flex;
@@ -181,12 +181,19 @@ img.gamble-icon.unchosen {cursor: not-allowed;}
 }
 .player.changed p {color: lightgrey;}
 
+#gamble-result.ratings .player:hover {
+    padding: var(--offset);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .slider {
     visibility: hidden;
     position: absolute;
-    width: calc(1.5 * var(--offset));
-    left: calc(-.25 * var(--offset));
-    transform: translateY(calc(-1 * var(--offset)));
+    width: calc(2 * var(--offset));
+    transform: translateY(calc(-0.4 * var(--offset)));
 }
 .player:hover .slider {visibility: visible;}
 .labels {
@@ -194,7 +201,13 @@ img.gamble-icon.unchosen {cursor: not-allowed;}
     width: 100%;
     position: absolute;
 }
-.labels > p {position: absolute; width: 100%;}
-.labels > p:first-child {left: calc(-100% - .5em); text-align: right;}
-.labels > p:last-child {left: calc(100% + .5em); text-align: left;}
+.labels > p {
+    position: absolute;
+    width: 50%;
+    text-align: center;
+    background-color: var(--background-color);
+    border-radius: 1em;
+}
+.labels > p:first-child {left: -50%;}
+.labels > p:last-child {left: 100%;}
 
