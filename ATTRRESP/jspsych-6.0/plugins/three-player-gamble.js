@@ -192,7 +192,7 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 // Unchosen option
                 const x = T.participant.vote === "A"? "B" : "A";
                 // Calculate where votes should go.
-                if(!T.status) {
+                if(T.status !== 1) {
                     // Both others vote against participant
                     T.players
                         .filter(p => !p.isParticipant)
