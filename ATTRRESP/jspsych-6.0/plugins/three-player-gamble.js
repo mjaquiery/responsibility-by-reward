@@ -169,10 +169,10 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                     if(T.participant.vote === e.dataset.gamble) {
                         addVoterIcon(e, T.participant);
                         e.classList.add('participant-vote');
+                        e.parentElement.querySelector('.votes')
+                            .classList.add('show');
                     } else
                         e.classList.add('participant-spurned');
-                    e.parentElement.querySelector('.votes')
-                        .classList.add('show');
                 });
             messageP.innerHTML = `Awaiting other votes...`;
         }
@@ -215,7 +215,11 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                                 addVoterIcon(e, p);
                         });
                     });
-                document.querySelectorAll('img.gamble-icon').forEach(e => e.classList.add('chosen'));
+                document.querySelectorAll('img.gamble-icon').forEach(e => {
+                    e.classList.add('chosen');
+                    e.parentElement.querySelector('.votes')
+                        .classList.add('show');
+                });
                 // Remove icon of unchosen gamble
                 const unchosenGambleImg = display_element.querySelector(`img.gamble-icon[data-gamble="${T.status === 1? x : c}"]`);
                 unchosenGambleImg.src = "stim/defimg.jpg";
