@@ -155,9 +155,9 @@ jsPsych.plugins["three-player-gamble"] = (function() {
 
         /**
          * Handle participant clicking a choice
+         * @param event {Event}
          */
-        function processGambleChoice() {
-            const event = window.event;
+        function processGambleChoice(event) {
             if(!event.currentTarget.classList.contains('gamble-icon'))
                 return;
             data.time_choice_made = performance.now();
