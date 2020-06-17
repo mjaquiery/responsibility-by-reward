@@ -169,11 +169,10 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                     if(T.participant.vote === e.dataset.gamble) {
                         addVoterIcon(e, T.participant);
                         e.classList.add('participant-vote');
-                        e.parentElement.querySelector('.votes')
-                            .classList.add('show');
                     } else
                         e.classList.add('participant-spurned');
                 });
+            _toggleVoteVisibility();
             messageP.innerHTML = `Awaiting other votes...`;
         }
 
@@ -215,11 +214,8 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                                 addVoterIcon(e, p);
                         });
                     });
-                document.querySelectorAll('img.gamble-icon').forEach(e => {
-                    e.classList.add('chosen');
-                    e.parentElement.querySelector('.votes')
-                        .classList.add('show');
-                });
+                _toggleVoteVisibility();
+                document.querySelectorAll('img.gamble-icon').forEach(e => e.classList.add('chosen'));
                 // Remove icon of unchosen gamble
                 const unchosenGambleImg = display_element.querySelector(`img.gamble-icon[data-gamble="${T.status === 1? x : c}"]`);
                 unchosenGambleImg.src = "stim/defimg.jpg";
@@ -227,6 +223,14 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 unchosenGambleImg.classList.remove('chosen');
             }
             setTimeout(gambleResult, trial.gamble_choice_result_duration);
+        }
+
+        function _toggleVoteVisibility() {
+            document.querySelectorAll('.gamble-icons .votes')
+                .forEach(e => {
+                    e.classList.remove('show');
+                    setTimeout(() => e.classList.add('show'), 0);
+                });
         }
 
         /**
