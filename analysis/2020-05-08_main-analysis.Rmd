@@ -19,27 +19,73 @@ library(ggridges)
 library(ez)
 library(BayesFactor)
 theme_set(theme_light() + theme(
-  panel.grid = element_blank()
+  panel.grid = element_blank(),
+  legend.position = 'top',
+  text = element_text(size = 16)
 ))
 ```
 
 # Introduction
 
+In the first pilot study, participants provided a rating of their own responsibility for the outcome on every trial
+
 # Method
+
+## Statistical analysis.
+
+The primary analysis technique is ANOVA (Bayesian and frequentist). 
+Bayesian ANOVA results are obtained by taking the likelihood of a model with the effect of interest plus all simpler effects compared to an alternative containing only the simpler effects. 
+For main effects, this is the model for the effect alone compared to the intercept-only model; for one-way interactions this is the main effects plus interaction-of-interest model compared to the main effects only model.
+
+## Materials
+
+Experiments were custom-written in HTML/CSS/JavaScript using the [jsPsych framework](https://www.jspsych.org/) and undertaken by participants over the internet using their own devices.
+The experiment code was written by Marwa El Zein.
+
+## Procedure
+
+The entry point to the study is through recruitment on the Prolific (https://prolific.ac/) participant recruitment platform.
+Participants accepting the study are forwarded to the experiment website, where they provide informed consent for participation before entering the main experiment page.
+The experiment begins with detailed instruction pages which describe the structure of each round in the game, with screenshots of each stage, followed by a short training trial sequence.
+Once they have read the instructions and familiarised themselves with the game, participants begin the main experiment, which consists of 3 blocks of 20 trials.
+The 20 trials are a randomised sequence of balanced repetitions of each of the 8 unique trial types (as defined by whether the outcome is good/neutral; whether the participant is in the majority/minority; and whether the participant receives the outcome).
+The good/neutral trials and the trials with the participant in the majority/minority occurred equally frequently, while the participant received the outcome on 40% of all trials (because we wanted to maximise this variation but felt that 50% of trials might be noticeably unrealistic with four other players in the game).
+
+Each trial begins with a display of the five players.
+This is followed by a screen in which the participant selects one of two gamble images.
+Gamble images are selected from a collection of hand-drawn images of gambling devices and paraphernalia, and are counterbalanced such that each pair of images is shown the same number of times.
+Which gamble is selected has no influence on the outcome of the trial, which is predetermined.
+Once the participant selects a gamble the other option vanishes.
+
+If the participant has not selected a gamble by the end of the choice window, the rest of the trial is cancelled and the participant is shown a warning message which states that they have failed to make a choice in time.
+If the participant did select a gamble, the next screen indicates which gamble has been selected through the majority vote of all five players.
+Next, the gamble is allocated to one of the players and its outcome is shown (a coin for a rewarded trial or a coin with a cross through it for an unrewarded trial).
+
+Finally, the participant is asked to rate their own responsibility for the outcome using a slider.
+The responsibility rating phase lasts until the responsibility ratings has been submitted.
+
+Once all 60 experimental trials have been completed, participants are debriefed, thanked, and returned to Prolific.
+Payment follows once all participants have completed the study and bonuses have been calculated.
 
 ## Open science
 
 ### Preregistration
 
+Experiment 1 was not preregistered due to a technical glitch with the Open Science Framework platform (OSF).
+The preregistration form was submitted, but it was never processed and added to the repository.
+
 ### Open materials
 
+Materials for the studies can be found on the [GitHub repository](https://github.com/mjaquiery/responsibility-by-reward/tree/d6e65c5f4b62becfa23054c8e124d8916382b446/ATTRRESP) as it stood on 4th May 2020.
+
 ### Open data
+
+We are happy to share the experimental data for these pilot studies, but may not upload them to a repository unless requested. 
+Data for the main experiments will available online.
 
 # Results
 
 ## Descriptive statistics
-
-Load data...
 
 ```{r read data}
 
@@ -54,6 +100,9 @@ d
 ```
 
 ### Exclusions
+
+!TODO[This should exclude all but the first attempt for prolific ids that made multiple attempts?]
+!TODO[Decide if consecutive responses should include or exclude timeouts.]
 
 ```{r descriptive stats}
 
@@ -121,100 +170,92 @@ d <- d %>%
 
 Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, more than `r max_consec_resp` consecutive left or right responses, or fewer than `r expected_trial_n` trials recorded. Our final participant list contains `r length(unique(d$subject_id))` participants.
 
+### Demographics 
+
+```{r}
+
+d %>% 
+  transmute(unique_genders = str_to_upper(gender)) %>% 
+  unique()
+
+gender <- d %>% 
+  select(prolificid, gender) %>% 
+  mutate(gender = str_to_upper(gender)) %>% 
+  unique()
+
+age <- d %>% 
+  select(prolificid, age) %>% 
+  unique()
+
+```
+
+Participants self-reported a mean age of `r pull(age, age) %>% mean() %>% round(1)` (SD = `r pull(age, age) %>% sd() %>% round(1)`) years and their genders as M (`r gender %>% filter(gender == 'M') %>% nrow()`), F (`r gender %>% filter(gender == 'F') %>% nrow()`), or otherwise (`r gender %>% filter(gender != 'M' & gender != 'F') %>% nrow()`).
+
 ### Response times
 
 Participants make two responses on a trial, choosing a gamble and indicating their feeling of responsibility. 
+The distributions of the timings of these events for each participant are shown below for the first 15 seconds of the trials.
+The `r sum(d$rtchoice > 15000 | d$rt > 15000, na.rm = T)` responses which took longer than 15 seconds have been removed from this plot, but remain in the responsibility rating data analysed in the main analysis.
 
-```{r all-rt}
-
-tmp <- d %>% 
-  select(subject_id, rtchoice, rt) %>%
-  nest(df = -subject_id) %>%
-  mutate(rt = map(df, ~ mean_cl_normal(.$rt)),
-         rtchoice = map(df, ~ mean_cl_normal(.$rtchoice))) %>%
-  unnest(cols = c(rt, rtchoice), names_sep = '.')
-
-tmp <- tmp %>% 
-  select(-df) %>%
-  pivot_longer(-subject_id, names_to = c('var', 'stat'), names_sep = '\\.') %>%
-  pivot_wider(names_from = stat, values_from = value) 
-
-ggplot(tmp, aes(x = subject_id, y = y)) +
-  geom_point() + 
-  geom_errorbar(width = 0, aes(ymin = ymin, ymax = ymax)) +
-  # scale_y_continuous(limits = c(0, NA)) +
-  facet_wrap(~var) +
-  theme(
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank()
-  )
-
-```
-
-```{r all-rt-ridges, fig.height=14, fig.width=6}
+```{r all-rt, fig.height=14, fig.width=6}
 
 tmp <- d %>% 
-  select(subject_id, rt) %>%
-  nest(df = -subject_id) %>%
-  mutate(sum = map_dbl(df, ~ sum(.$rt)),
-         zrt = map(df, ~ scale(.$rt))) %>%
-  unnest(cols = zrt)
-tmp$subject_id <- reorder(tmp$subject_id, tmp$sum)
-  
-ggplot(tmp, aes(x = zrt, y = factor(subject_id))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_density_ridges(aes(fill = factor(subject_id)), alpha = .75) +
-  scale_fill_cyclical(values = scales::hue_pal()(2)) + 
-  scale_x_continuous(breaks = function(x) seq(floor(x[1]), ceiling(x[2]), 1)) +
+  select(subject_id, rt, rtchoice) %>%
+  pivot_longer(c(rt, rtchoice),
+               names_to = "Event", 
+               values_to = "Time") %>%
+  mutate(subject_id = factor(subject_id),
+         Event = case_when(Event == "rtchoice" ~ 'Gamble choice',
+                           Event == "rt" ~ 'Responsibility rating',
+                           T ~ NA_character_)) %>%
+  filter(!is.na(Event) & !is.na(Time)) %>%
+  rename(Participant = subject_id)
+
+ggplot(tmp, aes(y = Participant, x = Time, fill = Event, colour = Event)) +
+  geom_vline(xintercept = 2000, linetype = 'dashed', colour = 'grey75') +
+  geom_density_ridges(alpha = .25) +
+  geom_point(position = position_jitter(0, .05), alpha = .25) +
+  scale_x_continuous(limits = c(0, 15000)) +
+  labs(x = 'Time since trial start') +
   theme(
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank(),
-    panel.grid.major.x = element_line(colour = 'grey85')
-  )
-
-tmp <- d %>% 
-  select(subject_id, rtchoice) %>%
-  nest(df = -subject_id) %>%
-  mutate(sum = map_dbl(df, ~ sum(.$rtchoice)),
-         zrtchoice = map(df, ~ scale(.$rtchoice))) %>%
-  unnest(cols = zrtchoice)
-tmp$subject_id <- reorder(tmp$subject_id, tmp$sum)
-  
-ggplot(tmp, aes(x = zrtchoice, y = factor(subject_id))) +
-  geom_vline(xintercept = 0, linetype = 'dashed') +
-  geom_density_ridges(aes(fill = factor(subject_id)), alpha = .75) +
-  scale_fill_cyclical(values = scales::hue_pal()(2)) + 
-  scale_x_continuous(breaks = function(x) seq(floor(x[1]), ceiling(x[2]), 1)) +
-  theme(
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    panel.grid.major.x = element_line(colour = 'grey85')
-  )
-  
+    legend.position = 'top'
+  ) 
 
 ```
-
-There's an obvious outlier here, so we should probably impose a cap of ~ 3sd or so from the mean for each participant.
 
 ### Feeling of responsibility scale usage
 
-```{r, fig.height=14, fig.width=6}
+This plot shows each participant's use of the responsibility rating scale, i.e. their answers to the question of how responsible they felt on each trial.
 
-tmp <- d %>% 
-  select(subject_id, response) %>%
+```{r, fig.height=24, fig.width=6}
+
+tmp <- d %>%
+  mutate(`Trial type` = paste0(
+    if_else(status == 'majority', 'Majority', 'Minority'), ' - ',
+    if_else(getsout == 'participant', 'Participant', 'Other'), ' ',
+    if_else(outcome == 'reward', 'rewarded', 'not rewarded')
+  ),
+    `Trial type` = factor(`Trial type`)) %>%
+  select(subject_id, response, `Trial type`) %>%
+  filter(!is.na(response)) %>%
   nest(df = -subject_id) %>%
   mutate(sum = map_dbl(df, ~ sum(.$response))) %>%
   unnest(cols = df)
+
 tmp$subject_id <- reorder(tmp$subject_id, tmp$sum)
-  
-ggplot(tmp, aes(x = response, y = factor(subject_id))) +
-  geom_density_ridges(aes(fill = factor(subject_id))) +
+
+ggplot(tmp, aes(x = response, y = factor(subject_id), colour = `Trial type`, fill = `Trial type`)) +
+  geom_density_ridges(alpha = .15) +
   scale_x_continuous(limits = c(0, 100)) +
-  scale_fill_cyclical(values = scales::hue_pal()(2)) + 
   theme(
     axis.text.y = element_blank(),
-    axis.ticks.y = element_blank()
-  )
+    axis.ticks.y = element_blank(),
+    # legend.position = 'right',
+    legend.direction = 'vertical'
+  ) +
+  labs(x = 'Responsibility rating', y = 'Participant')
 
 ```
 
@@ -223,17 +264,26 @@ ggplot(tmp, aes(x = response, y = factor(subject_id))) +
 ```{r}
 dw <- .25
 d %>%
-  group_by(subject_id, status, outcome, getsout) %>% 
-  summarise(response = mean(response)) %>%
-  ggplot(aes(x = outcome, y = response, colour = getsout)) +
+  mutate(`Gamble outcome recipient` = 
+            if_else(getsout == "other", "Another player", "Participant"),
+         outcome = if_else(outcome == 'reward', "Reward", "No reward"),
+         status = if_else(status == 'majority', 
+                          "Participant in majority", 
+                          "Participant in minority")) %>%
+  group_by(subject_id, status, outcome, `Gamble outcome recipient`) %>% 
+  filter(!is.na(response)) %>%
+  summarise(response = mean(response), .groups = 'drop') %>%
+  ggplot(aes(x = outcome, y = response, colour = `Gamble outcome recipient`)) +
   geom_hline(yintercept = 20, linetype = 'dashed') +
   geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = getsout), size = 5, fun.y = mean,
+  stat_summary(geom = "point", aes(group = `Gamble outcome recipient`), size = 4, fun = mean, position = position_dodge(dw)) +
+  stat_summary(geom = "errorbar", aes(group = `Gamble outcome recipient`), width = 0, 
+               fun.data = mean_cl_normal, position = position_dodge(dw)) +
+  stat_summary(geom = 'line', fun = mean, aes(group = `Gamble outcome recipient`),
                position = position_dodge(dw)) +
-  stat_summary(geom = "errorbar", aes(group = getsout), width = 0, fun.data = mean_cl_normal,
-               position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun.y = mean, aes(group = getsout)) +
-  facet_wrap(~status, labeller = label_both)
+  facet_wrap(~status) +
+  labs(y = "Participant rating of own responsibility", 
+       x = "Gamble outcome")
 
 ```
 
@@ -262,7 +312,15 @@ a.bf = anovaBF(
 a.bf
 ```
 
+Participants showed a strong tendency to provide higher ratings for reward versus non-reward outcomes ($F$(1, 46) = 21.7, $p$ < .001, $\eta_p^2$ = .023) and if they rather than another participant received the outcome ($F$(1, 46) = 13.0, $p$ < .001, $\eta_p^2$ = .008). 
+There was no main effect of whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/6.7).
+Moreover, the increase in ratings for rewarded vs non-rewarded trials were greater where the Participant as opposed to Another player received the outcome ($F$(1, 46) = 10.1, $p$ = .003, $\eta_p^2$ = .004) or where the participant was in the Majority as opposed to the Minority for the choice of gamble ($F$(1, 46) = 4.5, $p$ = .039, $\eta_p^2$ = .011). 
+The increase in ratings of responsibility for trials on which Participant as opposed to Another player was equivalent whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/15.2).
+Finally, there was a three-way interaction: the difference in responsibility for rewarded vs non-rewarded trials according to whether the participant received the outcome differed between the participants' minority and majority trials ($F$(1, 46) = 9.9, $p$ = .003, $\eta_p^2$ = .002).
+
 # Discussion
+
+Pilot experiment 1 suggested that participants' feelings of responsibility were sensitive to the manipulation of outcome recipient: There was an inflation of feeling of responsibility for good outcomes where the participant was the recipient.
 
 # Credits 
 
