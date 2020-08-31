@@ -1,5 +1,5 @@
 ---
-title: "Analysis of new data"
+title: "Pilot experiment 1"
 author: "Matt Jaquiery"
 date: "08/05/2020"
 output: html_document
@@ -18,16 +18,79 @@ library(tidyverse)
 library(ggridges)
 library(ez)
 library(BayesFactor)
-theme_set(theme_light() + theme(
+library(papaja)
+
+theme_set(theme_apa() + theme(
   panel.grid = element_blank(),
   legend.position = 'top',
   text = element_text(size = 16)
 ))
+
+#' Compare models within a anovaBF output to get relative likelihood
+#' @param x the BFBayesFactor object containing the results
+#' @param comparisons list of pairs of values for the comparisons. Values can be row numbers or model strings.
+#' @return data frame with columns M1, M2, BF(M1,M2)
+marginalBF <- function(x, comparisons) {
+  ns <- rownames(x@bayesFactor)
+  getIndex <- function(i) if (i %in% ns) which(ns == i) else i
+  bf <- function(a, b) exp(a - b)
+  out <- NULL
+  for (comp in comparisons) {
+    if (length(comp) == 1) {
+      a <- getIndex(comp[1])
+      out <- rbind(out, data.frame(
+        M1 = ns[a],
+        M2 = x@denominator@longName,
+        BF.M1.M2 = exp(x@bayesFactor$bf[a])
+      ))
+    } else {
+      a <- getIndex(comp[1]); b <- getIndex(comp[2]);
+      out <- rbind(out, data.frame(
+        M1 = ns[a], 
+        M2 = ns[b],
+        BF.M1.M2 = bf(x@bayesFactor$bf[a], x@bayesFactor$bf[b])
+      ))
+    }
+    
+  }
+  if (!is.null(names(comparisons)))
+    rownames(out) <- names(comparisons)
+  out
+}
 ```
 
 # Introduction
 
-In the first pilot study, participants provided a rating of their own responsibility for the outcome on every trial
+How we judge our responsibility and the responsibility of others for actions’ outcomes has important consequences in our society. 
+It is tightly related to whether we get rewarded or blamed for the actions we make, which is crucial for the maintenance of a cooperative and fair society. 
+Even in our everyday lives, correctly or wrongfully attributing responsibility to ourselves and others for seemingly non crucial actions, can have emotional and long-term consequences.
+
+How people attribute responsibility to themselves in a group is subjective: They tend to attribute higher responsibility for positive as compared to negative outcomes. 
+This is known as the self-serving bias, where people claim more credit for positive events, while they duck responsibility for negative events (Caine & Schlenker, 1979; Forsyth & Schlenker, 1977; Leary & Forsyth, 1987; Miller & Schlenker, 1985).
+This bias however does not seem to be purely selfish: it also appears when people judge their group or another person’s responsibility (Palmeira et al., 2015; Taylor & Doria, 1981). 
+For example, in the context of advising, people exhibit an ‘other-serving’ bias as they tend to credit more than blame an advisor (Palmeira et al., 2015). 
+
+In individual contexts, the rewards naturally seem to belong to the person producing a positive or negative outcome. 
+In a group decision however, the outcome may be shared or given to one group member. 
+It has been established that responsibility underlies ownership: control and intent of an action, which are directly associated with responsibility attributions, also predict whether a person is perceived as the owner of an object (Palamar et al., 2012). 
+If attributions of responsibility predict ownership, is the opposite true?
+Here we would like to address 1) whether outcome ownership changes attributions of responsibility and 2) whether outcome ownership is necessary for the self-serving and/or other-serving bias to appear.  
+We investigate this question in a group decision-making context, where only one member can receive the outcome in each round. 
+
+Participants will perform an online task where they make collective decisions through majority votes, then one member of the group can receive either a reward or no reward. 
+Finally they will rate the responsibility of the group members for the received positive or negative outcome. 
+This paradigm will allow us to address both questions stated above: 
+
+1. by investigating whether responsibility attribution increases when a group member receives the outcome versus does not receive the outcome, although the control over the outcome is exactly similar. 
+
+2. By checking whether the self and other-serving bias of higher responsibility ratings for positive outcomes depend on who gets the outcome in a group decision. 
+
+In other words, we will answer the question: do people exhibit the same self-serving bias when judging the responsibility for an outcome that is attributed to another member of their group? 
+Do they also still exhibit an ‘other-serving’ bias when judging the responsibility of another group member who did not receive the outcome?
+We will also investigate (1b) whether self- and other-serving biases are of similar strength.
+
+The study reported here is the first pilot study.
+In this study, participants provided a rating of their own responsibility for the outcome on every trial.
 
 # Method
 
@@ -89,22 +152,19 @@ Data for the main experiments will available online.
 
 ```{r read data}
 
-x <- read.csv('../data/data50part.csv', stringsAsFactors = F) %>% 
-  mutate_at(vars(c(trialnum, outcome)), as.numeric)
-y <- read.csv('../data/dataextra.csv', stringsAsFactors = F)
+suppressWarnings({
+  x <- read.csv('../data/data50part.csv', stringsAsFactors = F) %>% 
+    mutate_at(vars(c(trialnum, outcome)), as.numeric)
+  y <- read.csv('../data/dataextra.csv', stringsAsFactors = F)
+})
 
 d <- bind_rows(x, y) %>% filter(label == 'scaleresp') %>% as_tibble()
-
-d
 
 ```
 
 ### Exclusions
 
-!TODO[This should exclude all but the first attempt for prolific ids that made multiple attempts?]
-!TODO[Decide if consecutive responses should include or exclude timeouts.]
-
-```{r descriptive stats}
+```{r exclusions, results = 'asis'}
 
 d.old <- d
 
@@ -112,14 +172,29 @@ max_missed_trials <- 10
 max_consec_resp <- 10
 expected_trial_n <- 60
 
+# double_entry
+exclude_ids <- d %>%
+  nest(d = -prolificid) %>%
+  mutate(
+    d = map(d, ~ filter(., subject_id != subject_id[1]))
+  ) %>%
+  unnest(cols = d) %>%
+  select(subject_id) %>% 
+  unique() %>%
+  mutate(double_entry = T)
+
 # max_missed_trials
-exclude_ids <- d %>% 
-  nest(df = -subject_id) %>%
-  mutate(missed_trials = 
-           map_dbl(df, . %>% filter(is.na(rt), is.na(response), is.na(rtchoice), is.na(buttonchoice)) %>% nrow()),
-         missed_trials = missed_trials >= max_missed_trials) %>%
-  filter(missed_trials) %>%
-  select(-df)
+exclude_ids <- full_join(
+  exclude_ids,
+  d %>% 
+    nest(df = -subject_id) %>%
+    mutate(missed_trials = 
+             map_dbl(df, . %>% filter(is.na(rt), is.na(response), is.na(rtchoice), is.na(buttonchoice)) %>% nrow()),
+           missed_trials = missed_trials >= max_missed_trials) %>%
+    filter(missed_trials) %>%
+    select(-df),
+  by = "subject_id"
+)
 
 # expected_trial_n
 exclude_ids <- full_join(
@@ -150,12 +225,14 @@ exclude_ids <- full_join(
   by = "subject_id"
 )
 
-exclude_ids
-
 exclude_ids %>% 
-  mutate(unique_exclusions = 1) %>% 
-  select(unique_exclusions, everything(), -subject_id) %>% 
-  summarise_all(sum, na.rm = T)
+  mutate(total_unique_exclusions = 1) %>% 
+  select(everything(), total_unique_exclusions, -subject_id) %>% 
+  summarise_all(sum, na.rm = T) %>% 
+  pivot_longer(cols = everything(), 
+               names_to = 'Reason', 
+               values_to = 'N excluded') %>%
+  apa_table()
 
 d <- d %>% 
   filter(!(subject_id %in% exclude_ids$subject_id)) %>% 
@@ -168,15 +245,19 @@ d <- d %>%
 
 ```
 
-Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, more than `r max_consec_resp` consecutive left or right responses, or fewer than `r expected_trial_n` trials recorded. Our final participant list contains `r length(unique(d$subject_id))` participants.
+Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, more than `r max_consec_resp` consecutive left or right responses (after removing incomplete responses), or fewer than `r expected_trial_n` trials recorded. Our final participant list contains `r length(unique(d$subject_id))` participants.
 
 ### Demographics 
 
-```{r}
+```{r participant demographics, results = 'asis'}
 
 d %>% 
-  transmute(unique_genders = str_to_upper(gender)) %>% 
-  unique()
+  group_by(subject_id) %>%
+  transmute(gender = str_to_upper(gender)) %>% 
+  unique() %>%
+  group_by(gender) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  apa_table()
 
 gender <- d %>% 
   select(prolificid, gender) %>% 
@@ -186,18 +267,34 @@ gender <- d %>%
 age <- d %>% 
   select(prolificid, age) %>% 
   unique()
-
 ```
 
 Participants self-reported a mean age of `r pull(age, age) %>% mean() %>% round(1)` (SD = `r pull(age, age) %>% sd() %>% round(1)`) years and their genders as M (`r gender %>% filter(gender == 'M') %>% nrow()`), F (`r gender %>% filter(gender == 'F') %>% nrow()`), or otherwise (`r gender %>% filter(gender != 'M' & gender != 'F') %>% nrow()`).
 
+Data were collected on the following days:
+
+```{r experiment dates, results = 'asis'}
+d %>%
+  select(subject_id, date) %>%
+  unique() %>%
+  group_by(date) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  rename(Date = date, Participants = n) %>%
+  apa_table()
+
+```
+
 ### Response times
+
+```{r}
+max_rt <- 15000
+```
 
 Participants make two responses on a trial, choosing a gamble and indicating their feeling of responsibility. 
 The distributions of the timings of these events for each participant are shown below for the first 15 seconds of the trials.
-The `r sum(d$rtchoice > 15000 | d$rt > 15000, na.rm = T)` responses which took longer than 15 seconds have been removed from this plot, but remain in the responsibility rating data analysed in the main analysis.
+The `r sum(d$rtchoice > max_rt | d$rt > max_rt, na.rm = T)` responses which took longer than 15 seconds have been removed from this plot (the number for each participant is indicated in grey text), but remain in the responsibility rating data analysed in the main analysis.
 
-```{r all-rt, fig.height=14, fig.width=6}
+```{r response time visualisations, fig.height=14, fig.width=6}
 
 tmp <- d %>% 
   select(subject_id, rt, rtchoice) %>%
@@ -211,11 +308,23 @@ tmp <- d %>%
   filter(!is.na(Event) & !is.na(Time)) %>%
   rename(Participant = subject_id)
 
+# Replace out-of-scale values with a count of dropped values
+dropped <- tmp %>%
+  # nest(n = -Participant) %>%
+  # mutate(n = map_dbl(n, ~ filter(., Time > max_rt) %>% nrow()))
+  group_by(Participant) %>%
+  filter(Time > max_rt) %>%
+  transmute(n = n())
+
+tmp <- tmp %>% filter(Time <= max_rt)
+
 ggplot(tmp, aes(y = Participant, x = Time, fill = Event, colour = Event)) +
   geom_vline(xintercept = 2000, linetype = 'dashed', colour = 'grey75') +
   geom_density_ridges(alpha = .25) +
   geom_point(position = position_jitter(0, .05), alpha = .25) +
-  scale_x_continuous(limits = c(0, 15000)) +
+  geom_text(aes(label = paste0('... +', dropped$n), y = Participant),
+            inherit.aes = F, x = max_rt, colour = 'grey', data = dropped) +
+  scale_x_continuous(limits = c(0, max_rt)) +
   labs(x = 'Time since trial start') +
   theme(
     axis.text.y = element_blank(),
@@ -229,7 +338,7 @@ ggplot(tmp, aes(y = Participant, x = Time, fill = Event, colour = Event)) +
 
 This plot shows each participant's use of the responsibility rating scale, i.e. their answers to the question of how responsible they felt on each trial.
 
-```{r, fig.height=24, fig.width=6}
+```{r feeling of responsibility visualisations, fig.height=24, fig.width=6}
 
 tmp <- d %>%
   mutate(`Trial type` = paste0(
@@ -261,7 +370,7 @@ ggplot(tmp, aes(x = response, y = factor(subject_id), colour = `Trial type`, fil
 
 ## Inferential statistics
 
-```{r}
+```{r feeling of responsibility plot}
 dw <- .25
 d %>%
   mutate(`Gamble outcome recipient` = 
@@ -276,7 +385,8 @@ d %>%
   ggplot(aes(x = outcome, y = response, colour = `Gamble outcome recipient`)) +
   geom_hline(yintercept = 20, linetype = 'dashed') +
   geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = `Gamble outcome recipient`), size = 4, fun = mean, position = position_dodge(dw)) +
+  stat_summary(geom = "point", aes(group = `Gamble outcome recipient`), size = 4, 
+               fun = mean, position = position_dodge(dw), shape = 0) +
   stat_summary(geom = "errorbar", aes(group = `Gamble outcome recipient`), width = 0, 
                fun.data = mean_cl_normal, position = position_dodge(dw)) +
   stat_summary(geom = 'line', fun = mean, aes(group = `Gamble outcome recipient`),
@@ -287,29 +397,48 @@ d %>%
 
 ```
 
-```{r}
+```{r ANOVA results, results = 'asis'}
 
-a <- ezANOVA(
-  data = d,
-  dv = response,
-  wid = subject_id,
-  within = c(
-    outcome,
-    getsout,
-    status
+suppressWarnings({
+  a <- ezANOVA(
+    data = d,
+    dv = response,
+    wid = subject_id,
+    within = c(
+      outcome,
+      getsout,
+      status
+    )
   )
-)
+})
 
-a
+
+a %>%
+  apa_table()
+
+```
+
+```{r Bayesian ANOVA results, results = 'asis'}
 
 a.bf = anovaBF(
-  data = d,
+  data = as.data.frame(d),
   formula = response ~ 
-    outcome + getsout + status + subject_id,
+    status + outcome + getsout + subject_id,
   whichRandom = 'subject_id', progress = F
 )
 
-a.bf
+a.bf %>% 
+  marginalBF(comparisons = list(
+    # 1, 2, 5, # Main effect vs random effects model
+    c(8, 6), c(8, 3), c(8, 7), # Main effects vs model with other main effects
+    c(14, 8), c(9, 8), c(11, 8), # 2-way interactions vs main effects model
+    c(18, 17) # 3-way interactions vs 2-way interactions model
+  )) %>%
+  mutate(`.3<BF>3` = case_when(BF.M1.M2 < 1/3 ~ '-', 
+                                   BF.M1.M2 > 3 ~ '+', 
+                                   T ~ '')) %>%
+  apa_table()
+
 ```
 
 Participants showed a strong tendency to provide higher ratings for reward versus non-reward outcomes ($F$(1, 46) = 21.7, $p$ < .001, $\eta_p^2$ = .023) and if they rather than another participant received the outcome ($F$(1, 46) = 13.0, $p$ < .001, $\eta_p^2$ = .008). 
@@ -318,19 +447,52 @@ Moreover, the increase in ratings for rewarded vs non-rewarded trials were great
 The increase in ratings of responsibility for trials on which Participant as opposed to Another player was equivalent whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/15.2).
 Finally, there was a three-way interaction: the difference in responsibility for rewarded vs non-rewarded trials according to whether the participant received the outcome differed between the participants' minority and majority trials ($F$(1, 46) = 9.9, $p$ = .003, $\eta_p^2$ = .002).
 
+We had three main hypotheses we wish to investigate:
+
+**1. Does responsibility attribution increase when a group member receives the outcome versus does not receive the outcome?**
+This is revealed in the main effect of whether the participant receives the outcome ('getsout'). 
+We see the expected main effect in the expected direction.
+
+**1b. Is the responsibility increase from receiving the outcome stronger when the participant vs another player receives the outcome?** 
+This pilot is not set up to answer this question because there are not attributions of responsibility for the receiving player when that player is not the participant.
+
+**2. Will the self and other-serving bias of higher responsibility ratings for positive outcomes depend on who gets the outcome?**
+This is revealed in the interaction between the effects of whether the participant receives the outcome ('getsout') and whether the outcome was good ('outcome'). 
+We see the expected interaction in the expected direction.
+
 # Discussion
 
-Pilot experiment 1 suggested that participants' feelings of responsibility were sensitive to the manipulation of outcome recipient: There was an inflation of feeling of responsibility for good outcomes where the participant was the recipient.
+Pilot experiment 1 suggested that participants' feelings of responsibility were increased where the participant received the outcome of the chosen gamble (whether good or neutral). 
+This increase was greater where the outcome was good rather than neutral.
+
+# References
+
+Bruce T. Caine  and  Barry  R.  Schlenker. Role  Position and  Group  Performance  as  Determinants  of  Egotistical  Perceptions  in  Cooperative  Groups. The  Journal of  Psychology,   101(2):149–156,   March  1979. ISSN0022-3980. doi: 10.1080/00223980.1979.9915066. URL https://doi.org/10.1080/00223980.1979.9915066.
+
+John  M.  Darley  and  Bibb  Latane.  Bystander  intervention in emergencies:  Diffusion of responsibility. Journal of Personality and Social Psychology, 8(4, Pt.1):377–383,1968. ISSN  1939-1315(Electronic), 0022-3514(Print). doi: 10.1037/h0025589.
+
+Donelson R. Forsyth, Linda E. Zyzniewski, and Cheryl A. Giammanco. Responsibility   Diffusion   in   Cooperative   Collectives. Personality   and   Social   PsychologyBulletin,   28(1):54–65,   January   2002. ISSN   0146-1672. doi:10.1177/0146167202281005.URL https://doi.org/10.1177/0146167202281005.
+
+Donelson   R.   Forsyth   and   Barry   R.   Schlenker. Attributing  the  causes  of  group  performance:   Effects  of performance  quality,  task  importance,  and  future  testing. Journal   of   Personality,   45(2):220–236,   1977. ISSN   1467-6494(Electronic), 0022-3506(Print). doi:10.1111/j.1467-6494.1977.tb00148.x.
+
+Mark R. Leary and Donelson R. Forsyth.   Attributions of responsibility for collective endeavors. In Group processes, Review of personality and social psychology, Vol. 8., pages167–188. Sage Publications, Inc, Thousand Oaks, CA, US,1987. ISBN 978-0-8039-3071-1 978-0-8039-3072-8.
+
+Rowland   S.   Miller   and   Barry   R.   Schlenker. Egotism   in   Group   Members: Public   and   Private   Attributions    of    Responsibility    for    Group    Performance. Social Psychology Quarterly, 48(1):85–89,1985. ISSN   0190-2725.doi:10.2307/3033785. URL https://www.jstor.org/stable/3033785.
+
+Mauricio   Palmeira,    Gerri   Spassova,    and   Hean   TatKeh. Other-serving   bias   in   advice-taking: When advisors   receive   more   credit   than   blame. Organizational Behavior and Human Decision Processes,   130:13–25,   September   2015. ISSN   0749-5978.doi:10.1016/j.obhdp.2015.06.001. URL http://www.sciencedirect.com/science/article/pii/S0749597815000692.
+
+Max  Rollwage,  Franziska  Pannach,  Caedyn  Stinson,  Ulf Toelch, Igor Kagan, and Arezoo Pooresmaeili.  Judgments of effort exerted by others are influenced by received rewards. Scientific Reports, 10(1):1–14, February 2020. ISSN 2045-2322.    doi:   10.1038/s41598-020-58686-0.    URLhttps://www.nature.com/articles/s41598-020-58686-0.
+
+Donald  M.  Taylor  and  Janet  R.  Doria. Self-Serving and  Group-Serving  Bias  in  Attribution. The  Journal  of Social  Psychology,  113(2):201–211,  April  1981. ISSN0022-4545. doi: 10.1080/00224545.1981.9924371. URL https://doi.org/10.1080/00224545.1981.9924371. Publisher: Routledge_eprint: https://doi.org/10.1080/00224545.1981.9924371.
+
 
 # Credits 
 
-## Acknowledgements
-
-
+<!-- ## Acknowledgements -->
 
 ## R Packages
 
-```{r results = 'asis'}
+```{r R packages, results = 'asis'}
 # list packages
 packageNames <- (.packages())
 # don't include very core package
@@ -347,18 +509,20 @@ for (p in packageNames) {
                                                    collapse = '<br/><br/>')))
 }
 
-as_tibble(out)
+out %>% apa_table()
 ```
 
 ## Funding
 
-Marwa El Zein is funded by ... 
+Marwa El Zein is a Sir Henry Wellcome Postdoctoral Fellow at University College London, funded by The Wellcome Trust.
 
 Matt Jaquiery is funded by a studentship from the [Medical Research Council](https://mrc.ukri.org/) (reference 1943590) and the University of Oxford [Department of Experimental Psychology](https://www.psy.ox.ac.uk/) (reference 17/18_MSD_661552).
 
+<hr/>
+
 ## Technical details  
 
-```{r results = 'hold'}
+```{r technical details, results = 'hold'}
 cat(paste('Time stamp:', Sys.time(), '\n\n'))
 cat('Runtime \n')
 proc.time()
