@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = F)
 ```
 
 ```{r, include=F}
-library(checkpoint)         # Ensure CRAN packages have the right versions
+# library(checkpoint)         # Ensure CRAN packages have the right versions
 # checkpoint('2020-05-08')  # All packages will be loaded as they stood at this date
 library(tidyverse)
 library(ggridges)
@@ -87,7 +87,10 @@ This paradigm will allow us to address both questions stated above:
 
 In other words, we will answer the question: do people exhibit the same self-serving bias when judging the responsibility for an outcome that is attributed to another member of their group? 
 Do they also still exhibit an ‘other-serving’ bias when judging the responsibility of another group member who did not receive the outcome?
-We will also investigate (1b) whether self- and other-serving biases are of similar strength.
+We will also investigate (1b) whether self- and other-serving biases are of similar strength.[^1b]
+
+[^1b]:
+  This is not investigated in Pilot 1 because all responsibility ratings are given for the participant themselves.
 
 The study reported here is the first pilot study.
 In this study, participants provided a rating of their own responsibility for the outcome on every trial.
@@ -111,8 +114,8 @@ The entry point to the study is through recruitment on the Prolific (https://pro
 Participants accepting the study are forwarded to the experiment website, where they provide informed consent for participation before entering the main experiment page.
 The experiment begins with detailed instruction pages which describe the structure of each round in the game, with screenshots of each stage, followed by a short training trial sequence.
 Once they have read the instructions and familiarised themselves with the game, participants begin the main experiment, which consists of 3 blocks of 20 trials.
-The 20 trials are a randomised sequence of balanced repetitions of each of the 8 unique trial types (as defined by whether the outcome is good/neutral; whether the participant is in the majority/minority; and whether the participant receives the outcome).
-The good/neutral trials and the trials with the participant in the majority/minority occurred equally frequently, while the participant received the outcome on 40% of all trials (because we wanted to maximise this variation but felt that 50% of trials might be noticeably unrealistic with four other players in the game).
+The 20 trials are a randomised sequence of balanced repetitions of each of the 8 unique trial types (as defined by whether the outcome is a reward/no reward; whether the participant is in the majority/minority; and whether the participant receives the outcome).
+The a reward/no reward trials and the trials with the participant in the majority/minority occurred equally frequently, while the participant received the outcome on 40% of all trials (because we wanted to maximise this variation but felt that 50% of trials might be noticeably unrealistic with four other players in the game).
 
 Each trial begins with a display of the five players.
 This is followed by a screen in which the participant selects one of two gamble images.
@@ -169,7 +172,6 @@ d <- bind_rows(x, y) %>% filter(label == 'scaleresp') %>% as_tibble()
 d.old <- d
 
 max_missed_trials <- 10
-max_consec_resp <- 10
 expected_trial_n <- 60
 
 # double_entry
@@ -216,12 +218,13 @@ d <- d %>% filter(!is.na(rt), !is.na(response), !is.na(rtchoice), !is.na(buttonc
 exclude_ids <- full_join(
   exclude_ids,
   d %>% 
-    arrange(subject_id, trialnum) %>%
-    mutate(consec = sequence(rle(buttonchoice)$lengths)) %>%
-    nest(df = -subject_id) %>%
-    mutate(consec_resp = map_lgl(df, ~ any(.$consec >= max_consec_resp))) %>%
+    nest(d = c(-subject_id, -bloc)) %>%
+    mutate(
+      consec_resp = map_lgl(d, ~ all(.$buttonchoice == .$buttonchoice[1]))
+    ) %>%
     filter(consec_resp) %>%
-    select(-df),
+    select(subject_id, consec_resp) %>%
+    unique(),
   by = "subject_id"
 )
 
@@ -245,7 +248,12 @@ d <- d %>%
 
 ```
 
-Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, more than `r max_consec_resp` consecutive left or right responses (after removing incomplete responses), or fewer than `r expected_trial_n` trials recorded. Our final participant list contains `r length(unique(d$subject_id))` participants.
+Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, picked the gamble option on the same side for all the trials in a block (after removing incomplete responses),[^consec_resp] or fewer than `r expected_trial_n` trials recorded. Our final participant list contains `r length(unique(d$subject_id))` participants.
+
+[^consec_resp]: 
+  _Note_: The criterion for exclusion of participants for consecutive responses was preregistered as 10 consecutive trials with the same gamble response key. 
+  It was not clear in our preregistration planning whether trials with no response should break up consecutive responses for this purpose.
+  After determining that the particular implementation of this exclusion rule did not change the interpretations drawn from the analysis results and that consecutive gamble choice did not seem to be a marker of inattention, we instead adopted the simpler rule that all participants must have used both gamble choice response keys in every block of trials.
 
 ### Demographics 
 
@@ -370,19 +378,116 @@ ggplot(tmp, aes(x = response, y = factor(subject_id), colour = `Trial type`, fil
 
 ## Inferential statistics
 
+```{r data preprocessing}
+prettify <- function(d)
+  d %>%
+  mutate(`Gamble outcome recipient` = 
+           if_else(getsout == "other", "Another player", "Participant"),
+         `Gamble outcome` = if_else(outcome == 'reward', "Reward", "No reward"),
+         `Gamble vote result` = if_else(status == 'majority', 
+                                        "Participant in majority", 
+                                        "Participant in minority"))
+
+#' GGplot2 helper function to get offset x coordinates to the left or right
+#' depending on whether the x coordinate is to the left or right.
+#' @param x vector of x coordinates (typically factors)
+#' @param amount amount to nudge in the appropriate direction
+#' @param direction to nudge. 'outwards' is towards the extremes, 'inwards' is towards the centre.
+nudge <- function(x, amount, direction = 'outwards') {
+  if (!is.factor(x))
+    x <- factor(x)
+  x <- as.numeric(x) 
+  dir <- if (direction == 'outwards') 1 else -1
+  x + sign(x - mean(range(x, na.rm = T))) * dir * amount
+}
+
+```
+
+### 1) Do participants feel more responsible if they receive the outcome versus do not receive the outcome?
+
+```{r effect of getting the outcome}
+dw <- .075
+
+tmp <- d %>% 
+  prettify() %>%
+  group_by(subject_id, `Gamble outcome recipient`) %>%
+  filter(!is.na(response)) %>%
+  summarise(response = mean(response), .groups = 'drop') 
+
+bf <- ttestBF(
+  x = tmp$response[tmp$`Gamble outcome recipient` == 'Another player'],
+  y = tmp$response[tmp$`Gamble outcome recipient` != 'Another player'],
+  paired = T
+)
+
+bf <- exp(bf@bayesFactor$bf) %>% round(2)
+
+ggplot(tmp, aes(x = `Gamble outcome recipient`, y = response)) +
+  geom_line(aes(group = subject_id), colour = 'grey') +
+  geom_boxplot(outlier.colour = NA, width = dw,
+               aes(x = nudge(`Gamble outcome recipient`, dw),
+                   group = `Gamble outcome recipient`)) +
+  geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
+  geom_label(x = 1.5, y = 101, label = paste0('BF = ', bf)) +
+  scale_x_discrete(expand = c(0, dw * 4)) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(y = 'Participant rating of own responsibility')
+
+```
+The figure shows participant mean self-responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
+Participants rate their own responsibility as higher when they (rather than another participant) receive the outcome.
+
+### 2) Does the self-serving bias, i.e, higher responsibility for positive vs negative outcomes, change if another member of their group receives the outcome?
+
+```{r interaction of outcome valance and getting the outcome}
+
+tmp <- d %>% 
+  prettify() %>%
+  group_by(subject_id, `Gamble outcome recipient`, `Gamble outcome`) %>%
+  filter(!is.na(response)) %>%
+  summarise(response = mean(response), .groups = 'drop')
+
+bf <- tmp %>%
+  nest(d = -`Gamble outcome recipient`) %>%
+  mutate(
+    bf = map(d, ~ ttestBF(
+      x = .$response[.$`Gamble outcome` == 'No reward'],
+      y = .$response[.$`Gamble outcome` != 'No reward'],
+      paired = T
+    )),
+    bf = map_dbl(bf, ~ .@bayesFactor %>% .$bf %>% exp() %>% round(2))
+  ) %>%
+  select(-d)
+
+ggplot(tmp, aes(x = `Gamble outcome`, y = response)) +
+  geom_line(aes(group = subject_id), colour = "grey") +
+  geom_boxplot(outlier.colour = NA, width = dw,
+               aes(x = nudge(`Gamble outcome`, dw),
+                   group = `Gamble outcome`)) +
+  geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
+  geom_label(aes(label = paste0('BF = ', bf)), x = 1.5, y = 101, data = bf) +
+  scale_x_discrete(expand = c(0, dw * 4)) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(y = 'Participant rating of own responsibility') +
+  facet_wrap(~paste0(`Gamble outcome recipient`, ' gets outcome'))
+
+```
+
+The figure shows participant mean self-responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
+The effect of 'self-serving bias' is much clearer on trials where the participant gets the outcome than on trials where another player gets the outcome. 
+
+
+We explored this statistically with a 2x2x2 ANOVA in which we saw an interaction between the effects of whether the participant receives the outcome ('getsout') and whether the outcome was good ('outcome'). 
+
 ```{r feeling of responsibility plot}
 dw <- .25
+
 d %>%
-  mutate(`Gamble outcome recipient` = 
-            if_else(getsout == "other", "Another player", "Participant"),
-         outcome = if_else(outcome == 'reward', "Reward", "No reward"),
-         status = if_else(status == 'majority', 
-                          "Participant in majority", 
-                          "Participant in minority")) %>%
-  group_by(subject_id, status, outcome, `Gamble outcome recipient`) %>% 
+  prettify() %>%
+  group_by(subject_id, `Gamble vote result`, `Gamble outcome`, `Gamble outcome recipient`) %>% 
   filter(!is.na(response)) %>%
   summarise(response = mean(response), .groups = 'drop') %>%
-  ggplot(aes(x = outcome, y = response, colour = `Gamble outcome recipient`)) +
+  ggplot(aes(x = `Gamble outcome`, y = response, colour = `Gamble outcome recipient`)) +
   geom_hline(yintercept = 20, linetype = 'dashed') +
   geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
   stat_summary(geom = "point", aes(group = `Gamble outcome recipient`), size = 4, 
@@ -391,11 +496,12 @@ d %>%
                fun.data = mean_cl_normal, position = position_dodge(dw)) +
   stat_summary(geom = 'line', fun = mean, aes(group = `Gamble outcome recipient`),
                position = position_dodge(dw)) +
-  facet_wrap(~status) +
-  labs(y = "Participant rating of own responsibility", 
-       x = "Gamble outcome")
+  facet_wrap(~`Gamble vote result`) +
+  labs(y = "Participant rating of own responsibility")
 
 ```
+
+The figure shows participant mean self-responsibility ratings collapsed in each trial type (coloured dots). Squares indicate the mean for a trial type across all participant means, with the error bars giving 95% confidence intervals.
 
 ```{r ANOVA results, results = 'asis'}
 
@@ -434,36 +540,23 @@ a.bf %>%
     c(14, 8), c(9, 8), c(11, 8), # 2-way interactions vs main effects model
     c(18, 17) # 3-way interactions vs 2-way interactions model
   )) %>%
-  mutate(`.3<BF>3` = case_when(BF.M1.M2 < 1/3 ~ '-', 
+  mutate(` ` = case_when(BF.M1.M2 < 1/3 ~ '-', 
                                    BF.M1.M2 > 3 ~ '+', 
                                    T ~ '')) %>%
   apa_table()
 
 ```
 
-Participants showed a strong tendency to provide higher ratings for reward versus non-reward outcomes ($F$(1, 46) = 21.7, $p$ < .001, $\eta_p^2$ = .023) and if they rather than another participant received the outcome ($F$(1, 46) = 13.0, $p$ < .001, $\eta_p^2$ = .008). 
-There was no main effect of whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/6.7).
-Moreover, the increase in ratings for rewarded vs non-rewarded trials were greater where the Participant as opposed to Another player received the outcome ($F$(1, 46) = 10.1, $p$ = .003, $\eta_p^2$ = .004) or where the participant was in the Majority as opposed to the Minority for the choice of gamble ($F$(1, 46) = 4.5, $p$ = .039, $\eta_p^2$ = .011). 
-The increase in ratings of responsibility for trials on which Participant as opposed to Another player was equivalent whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/15.2).
-Finally, there was a three-way interaction: the difference in responsibility for rewarded vs non-rewarded trials according to whether the participant received the outcome differed between the participants' minority and majority trials ($F$(1, 46) = 9.9, $p$ = .003, $\eta_p^2$ = .002).
-
-We had three main hypotheses we wish to investigate:
-
-**1. Does responsibility attribution increase when a group member receives the outcome versus does not receive the outcome?**
-This is revealed in the main effect of whether the participant receives the outcome ('getsout'). 
-We see the expected main effect in the expected direction.
-
-**1b. Is the responsibility increase from receiving the outcome stronger when the participant vs another player receives the outcome?** 
-This pilot is not set up to answer this question because there are not attributions of responsibility for the receiving player when that player is not the participant.
-
-**2. Will the self and other-serving bias of higher responsibility ratings for positive outcomes depend on who gets the outcome?**
-This is revealed in the interaction between the effects of whether the participant receives the outcome ('getsout') and whether the outcome was good ('outcome'). 
-We see the expected interaction in the expected direction.
+Participants showed a strong tendency to provide higher ratings for reward versus non-reward outcomes ($F$(1, 53) = 28.46, $p$ < .001, $\eta_p^2$ = .030) and if they rather than another participant received the outcome ($F$(1, 53) = 15.48, $p$ < .001, $\eta_p^2$ = .017). 
+There was no main effect of whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/25.09).
+Moreover, the increase in ratings for rewarded vs non-rewarded trials were greater where the Participant as opposed to Another player received the outcome ($F$(1, 53) = 9.46, $p$ < .001, $\eta_p^2$ = .005) or where the participant was in the Majority as opposed to the Minority for the choice of gamble ($F$(1, 53) = 5.29, $p$ = .025, $\eta_p^2$ = .012). 
+The increase in ratings of responsibility for trials on which Participant as opposed to Another player was equivalent whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/16.81).
+Finally, there was a three-way interaction: the difference in responsibility for rewarded vs non-rewarded trials according to whether the participant received the outcome differed between the participants' minority and majority trials ($F$(1, 53) = 7.64, $p$ = .001, $\eta_p^2$ = .003), although this was not confirmed by the Bayesian statistics because the result was uninformative (BF = 1.55).
 
 # Discussion
 
-Pilot experiment 1 suggested that participants' feelings of responsibility were increased where the participant received the outcome of the chosen gamble (whether good or neutral). 
-This increase was greater where the outcome was good rather than neutral.
+Pilot experiment 1 suggested that participants' feelings of responsibility were increased where the participant received the outcome of the chosen gamble (whether or not the outcome was a reward). 
+This increase was greater where the outcome was a reward rather than no reward.
 
 # References
 
