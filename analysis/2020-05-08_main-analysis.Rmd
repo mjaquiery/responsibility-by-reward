@@ -74,16 +74,16 @@ In individual contexts, the rewards naturally seem to belong to the person produ
 In a group decision however, the outcome may be shared or given to one group member. 
 It has been established that responsibility underlies ownership: control and intent of an action, which are directly associated with responsibility attributions, also predict whether a person is perceived as the owner of an object (Palamar et al., 2012). 
 If attributions of responsibility predict ownership, is the opposite true?
-Here we would like to address 1) whether outcome ownership changes attributions of responsibility and 2) whether outcome ownership is necessary for the self-serving and/or other-serving bias to appear.  
+Here we would like to address 1) whether _Outcome ownership_ changes attributions of responsibility and 2) whether _Outcome ownership_ is necessary for the self-serving and/or other-serving bias to appear.  
 We investigate this question in a group decision-making context, where only one member can receive the outcome in each round. 
 
-Participants will perform an online task where they make collective decisions through majority votes, then one member of the group can receive either a reward or no reward. 
-Finally they will rate the responsibility of the group members for the received positive or negative outcome. 
+Participants will perform an online task where they make collective decisions through majority votes, then one member of the group can receive either a _Reward_ or _No reward_. 
+Finally they will rate the responsibility of the group members for the outcome. 
 This paradigm will allow us to address both questions stated above: 
 
-1. by investigating whether responsibility attribution increases when a group member receives the outcome versus does not receive the outcome, although the control over the outcome is exactly similar. 
+1. by investigating whether responsibility attribution increases for the _Outcome owner_, although the control over the outcome is exactly similar. 
 
-2. By checking whether the self and other-serving bias of higher responsibility ratings for positive outcomes depend on who gets the outcome in a group decision. 
+2. By checking whether the self and other-serving bias of higher responsibility ratings for positive outcomes depend on _Outcome ownership_. 
 
 In other words, we will answer the question: do people exhibit the same self-serving bias when judging the responsibility for an outcome that is attributed to another member of their group? 
 Do they also still exhibit an ‘other-serving’ bias when judging the responsibility of another group member who did not receive the outcome?
@@ -94,10 +94,21 @@ We will also investigate (1b) whether self- and other-serving biases are of simi
 
 The study reported here is the first pilot study.
 In this study, participants provided a rating of their own responsibility for the outcome on every trial.
+For consistency with other studies in this series, we describe it as having a 2x2x2x1 factor structure, with all factors within-subjects:
+
+* Whether the rated player is the _Outcome recipient_:  
+    * _Outcome owner_ versus _Not outcome owner_  
+* The _Outcome valence_:  
+    * _Reward_ versus _No reward_  
+* The _Vote status_ of the participant in the group decision process:  
+    * _Participant in majority_ versus _Participant in minority_  
+* Whether the _Responsibility judgement_ is made about:  
+    * _Own responsibility_ versus _Another's responsibility_  
+    * In this experiment all _Responsibility judgements_ are made about the participant's _Own responsibility_  
 
 # Method
 
-## Statistical analysis.
+## Statistical analysis
 
 The primary analysis technique is ANOVA (Bayesian and frequentist). 
 Bayesian ANOVA results are obtained by taking the likelihood of a model with the effect of interest plus all simpler effects compared to an alternative containing only the simpler effects. 
@@ -241,9 +252,10 @@ d <- d %>%
   filter(!(subject_id %in% exclude_ids$subject_id)) %>% 
   mutate(
     subject_id = factor(subject_id),
-    status = factor(status, labels = c('majority', 'minority')),
-    outcome = factor(outcome, labels = c('reward', 'no reward')),
-    getsout = factor(getsout, labels = c('participant', 'other'))
+    status = factor(status, labels = c('Participant in majority', 
+                                       'Participant in minority')),
+    outcome = factor(outcome, labels = c('Reward', 'No reward')),
+    getsout = factor(getsout, labels = c('Outcome owner', 'Not outcome owner'))
   )
 
 ```
@@ -350,9 +362,9 @@ This plot shows each participant's use of the responsibility rating scale, i.e. 
 
 tmp <- d %>%
   mutate(`Trial type` = paste0(
-    if_else(status == 'majority', 'Majority', 'Minority'), ' - ',
-    if_else(getsout == 'participant', 'Participant', 'Other'), ' ',
-    if_else(outcome == 'reward', 'rewarded', 'not rewarded')
+    if_else(status == 'Participant in majority', 'Majority', 'Minority'), ' - ',
+    if_else(getsout == 'Outcome owner', 'gets outcome', 'does not get outcome'), ' ',
+    if_else(outcome == 'Reward', '(reward)', '(no reward)')
   ),
     `Trial type` = factor(`Trial type`)) %>%
   select(subject_id, response, `Trial type`) %>%
@@ -372,7 +384,7 @@ ggplot(tmp, aes(x = response, y = factor(subject_id), colour = `Trial type`, fil
     # legend.position = 'right',
     legend.direction = 'vertical'
   ) +
-  labs(x = 'Responsibility rating', y = 'Participant')
+  labs(x = 'Own responsibility rating', y = 'Participant')
 
 ```
 
@@ -381,12 +393,9 @@ ggplot(tmp, aes(x = response, y = factor(subject_id), colour = `Trial type`, fil
 ```{r data preprocessing}
 prettify <- function(d)
   d %>%
-  mutate(`Gamble outcome recipient` = 
-           if_else(getsout == "other", "Another player", "Participant"),
-         `Gamble outcome` = if_else(outcome == 'reward', "Reward", "No reward"),
-         `Gamble vote result` = if_else(status == 'majority', 
-                                        "Participant in majority", 
-                                        "Participant in minority"))
+  mutate(`Outcome recipient` = getsout,
+         `Outcome valence` = outcome,
+         `Vote status` = status)
 
 #' GGplot2 helper function to get offset x coordinates to the left or right
 #' depending on whether the x coordinate is to the left or right.
@@ -403,73 +412,73 @@ nudge <- function(x, amount, direction = 'outwards') {
 
 ```
 
-### 1) Do participants feel more responsible if they receive the outcome versus do not receive the outcome?
+### 1) Do participants feel more responsible if they are the _Outcome owner_?
 
 ```{r effect of getting the outcome}
 dw <- .075
 
 tmp <- d %>% 
   prettify() %>%
-  group_by(subject_id, `Gamble outcome recipient`) %>%
+  group_by(subject_id, `Outcome recipient`) %>%
   filter(!is.na(response)) %>%
   summarise(response = mean(response), .groups = 'drop') 
 
 bf <- ttestBF(
-  x = tmp$response[tmp$`Gamble outcome recipient` == 'Another player'],
-  y = tmp$response[tmp$`Gamble outcome recipient` != 'Another player'],
+  x = tmp$response[tmp$`Outcome recipient` == 'Not outcome owner'],
+  y = tmp$response[tmp$`Outcome recipient` != 'Not outcome owner'],
   paired = T
 )
 
 bf <- exp(bf@bayesFactor$bf) %>% round(2)
 
-ggplot(tmp, aes(x = `Gamble outcome recipient`, y = response)) +
+ggplot(tmp, aes(x = `Outcome recipient`, y = response)) +
   geom_line(aes(group = subject_id), colour = 'grey') +
   geom_boxplot(outlier.colour = NA, width = dw,
-               aes(x = nudge(`Gamble outcome recipient`, dw),
-                   group = `Gamble outcome recipient`)) +
+               aes(x = nudge(`Outcome recipient`, dw),
+                   group = `Outcome recipient`)) +
   geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
   geom_label(x = 1.5, y = 101, label = paste0('BF = ', bf)) +
   scale_x_discrete(expand = c(0, dw * 4)) +
   scale_y_continuous(limits = c(0, 100)) +
-  labs(y = 'Participant rating of own responsibility')
+  labs(y = 'Rating of own responsibility')
 
 ```
 The figure shows participant mean self-responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
 Participants rate their own responsibility as higher when they (rather than another participant) receive the outcome.
 
-### 2) Does the self-serving bias, i.e, higher responsibility for positive vs negative outcomes, change if another member of their group receives the outcome?
+### 2) Does the self-serving bias, i.e, higher responsibility for positive _Outcome valence_, change if the participant is _Not outcome owner_?
 
-```{r interaction of outcome valance and getting the outcome}
+```{r interaction of outcome valence and getting the outcome}
 
 tmp <- d %>% 
   prettify() %>%
-  group_by(subject_id, `Gamble outcome recipient`, `Gamble outcome`) %>%
+  group_by(subject_id, `Outcome recipient`, `Outcome valence`) %>%
   filter(!is.na(response)) %>%
   summarise(response = mean(response), .groups = 'drop')
 
 bf <- tmp %>%
-  nest(d = -`Gamble outcome recipient`) %>%
+  nest(d = -`Outcome recipient`) %>%
   mutate(
     bf = map(d, ~ ttestBF(
-      x = .$response[.$`Gamble outcome` == 'No reward'],
-      y = .$response[.$`Gamble outcome` != 'No reward'],
+      x = .$response[.$`Outcome valence` == 'No reward'],
+      y = .$response[.$`Outcome valence` != 'No reward'],
       paired = T
     )),
     bf = map_dbl(bf, ~ .@bayesFactor %>% .$bf %>% exp() %>% round(2))
   ) %>%
   select(-d)
 
-ggplot(tmp, aes(x = `Gamble outcome`, y = response)) +
+ggplot(tmp, aes(x = `Outcome valence`, y = response)) +
   geom_line(aes(group = subject_id), colour = "grey") +
   geom_boxplot(outlier.colour = NA, width = dw,
-               aes(x = nudge(`Gamble outcome`, dw),
-                   group = `Gamble outcome`)) +
+               aes(x = nudge(`Outcome valence`, dw),
+                   group = `Outcome valence`)) +
   geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
   geom_label(aes(label = paste0('BF = ', bf)), x = 1.5, y = 101, data = bf) +
   scale_x_discrete(expand = c(0, dw * 4)) +
   scale_y_continuous(limits = c(0, 100)) +
-  labs(y = 'Participant rating of own responsibility') +
-  facet_wrap(~paste0(`Gamble outcome recipient`, ' gets outcome'))
+  labs(y = 'Rating of own responsibility') +
+  facet_wrap(~paste0('When ', `Outcome recipient`))
 
 ```
 
@@ -484,20 +493,23 @@ dw <- .25
 
 d %>%
   prettify() %>%
-  group_by(subject_id, `Gamble vote result`, `Gamble outcome`, `Gamble outcome recipient`) %>% 
+  group_by(subject_id, `Vote status`, `Outcome valence`, `Outcome recipient`) %>% 
   filter(!is.na(response)) %>%
   summarise(response = mean(response), .groups = 'drop') %>%
-  ggplot(aes(x = `Gamble outcome`, y = response, colour = `Gamble outcome recipient`)) +
+  ggplot(aes(x = `Outcome valence`, 
+             y = response, 
+             colour = paste0('When ', `Outcome recipient`))) +
   geom_hline(yintercept = 20, linetype = 'dashed') +
   geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = `Gamble outcome recipient`), size = 4, 
+  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
                fun = mean, position = position_dodge(dw), shape = 0) +
-  stat_summary(geom = "errorbar", aes(group = `Gamble outcome recipient`), width = 0, 
+  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
                fun.data = mean_cl_normal, position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun = mean, aes(group = `Gamble outcome recipient`),
+  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`),
                position = position_dodge(dw)) +
-  facet_wrap(~`Gamble vote result`) +
-  labs(y = "Participant rating of own responsibility")
+  facet_wrap(~`Vote status`) +
+  scale_colour_discrete(name = '') +
+  labs(y = "Rating of own responsibility")
 
 ```
 
@@ -547,13 +559,13 @@ a.bf %>%
 
 ```
 
-Participants showed a strong tendency to provide higher ratings for reward versus non-reward outcomes ($F$(1, 53) = 28.46, $p$ < .001, $\eta_p^2$ = .030) and if they rather than another participant received the outcome ($F$(1, 53) = 15.48, $p$ < .001, $\eta_p^2$ = .017). 
-There was no main effect of whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/25.09).
-Moreover, the increase in ratings for rewarded vs non-rewarded trials were greater where the Participant as opposed to Another player received the outcome ($F$(1, 53) = 9.46, $p$ < .001, $\eta_p^2$ = .005) or where the participant was in the Majority as opposed to the Minority for the choice of gamble ($F$(1, 53) = 5.29, $p$ = .025, $\eta_p^2$ = .012). 
-The increase in ratings of responsibility for trials on which Participant as opposed to Another player was equivalent whether the participant was in the Majority or Minority for the choice of gamble ($\text{BF}_{10}$ = 1/16.81).
-Finally, there was a three-way interaction: the difference in responsibility for rewarded vs non-rewarded trials according to whether the participant received the outcome differed between the participants' minority and majority trials ($F$(1, 53) = 7.64, $p$ = .001, $\eta_p^2$ = .003), although this was not confirmed by the Bayesian statistics because the result was uninformative (BF = 1.55).
+Participants showed a strong tendency to provide higher ratings for _Reward_ versus _No reward_ outcome valance ($F$(1, 53) = 28.46, $p$ < .001, $\eta_p^2$ = .030) and if they rather than another participant were the _Outcome owner_ ($F$(1, 53) = 15.48, $p$ < .001, $\eta_p^2$ = .017). 
+There was no main effect of whether or not the Vote status put the _Participant in Majority_ ($\text{BF}_{10}$ = 1/25.09).
+Moreover, the increase in ratings for _Rewarded_ vs _No reward_ trials was greater where the participant was the _Outcome owner_ ($F$(1, 53) = 9.46, $p$ < .001, $\eta_p^2$ = .005) or where the Vote status had the _Participant in Majority_ ($F$(1, 53) = 5.29, $p$ = .025, $\eta_p^2$ = .012). 
+The increase in ratings of responsibility for trials on which participant was the _Outcome owner_ was equivalent whether or not the Vote status had the _Participant in Majority_ ($\text{BF}_{10}$ = 1/16.81).
+Finally, there was a three-way interaction: the difference in responsibility for _Reward_ vs _No reward_ trials according to whether the participant was the _Outcome owner_ differed according to the Vote status ($F$(1, 53) = 7.64, $p$ = .001, $\eta_p^2$ = .003), although this was not confirmed by the Bayesian statistics because the result was uninformative (BF = 1.55).
 
-# Discussion
+# Interpretation
 
 Pilot experiment 1 suggested that participants' feelings of responsibility were increased where the participant received the outcome of the chosen gamble (whether or not the outcome was a reward). 
 This increase was greater where the outcome was a reward rather than no reward.
