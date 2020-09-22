@@ -12,14 +12,18 @@ knitr::opts_chunk$set(echo = F)
 ```
 
 ```{r, include=F}
-library(checkpoint)         # Ensure CRAN packages have the right versions
+# library(checkpoint)         # Ensure CRAN packages have the right versions
 # checkpoint('2020-05-08')  # All packages will be loaded as they stood at this date
 library(tidyverse)
 library(ggridges)
 library(ez)
 library(BayesFactor)
-theme_set(theme_light() + theme(
-  panel.grid = element_blank()
+library(papaja)
+
+theme_set(theme_apa() + theme(
+  panel.grid = element_blank(),
+  legend.position = 'top',
+  text = element_text(size = 16)
 ))
 
 #' Compare models within a anovaBF output to get relative likelihood
@@ -32,36 +36,125 @@ marginalBF <- function(x, comparisons) {
   bf <- function(a, b) exp(a - b)
   out <- NULL
   for (comp in comparisons) {
-    if (length(comp) < 2) {
-      stop(paste0("Comparison of length <2 (", length(comp), ") requested."))
+    if (length(comp) == 1) {
+      a <- getIndex(comp[1])
+      out <- rbind(out, data.frame(
+        M1 = ns[a],
+        M2 = x@denominator@longName,
+        BF.M1.M2 = exp(x@bayesFactor$bf[a])
+      ))
+    } else {
+      a <- getIndex(comp[1]); b <- getIndex(comp[2]);
+      out <- rbind(out, data.frame(
+        M1 = ns[a], 
+        M2 = ns[b],
+        BF.M1.M2 = bf(x@bayesFactor$bf[a], x@bayesFactor$bf[b])
+      ))
     }
-    a <- getIndex(comp[1]); b <- getIndex(comp[2]);
-    out <- rbind(out, data.frame(
-      M1 = ns[a], M2 = ns[b],
-      BF.M1.M2 = bf(x@bayesFactor$bf[a], x@bayesFactor$bf[b])
-    ))
+    
   }
+  if (!is.null(names(comparisons)))
+    rownames(out) <- names(comparisons)
   out
 }
 ```
 
 # Introduction
 
+How we judge our responsibility and the responsibility of others for actions’ outcomes has important consequences in our society. 
+It is tightly related to whether we get rewarded or blamed for the actions we make, which is crucial for the maintenance of a cooperative and fair society. 
+Even in our everyday lives, correctly or wrongfully attributing responsibility to ourselves and others for seemingly non crucial actions, can have emotional and long-term consequences.
+
+How people attribute responsibility to themselves in a group is subjective: They tend to attribute higher responsibility for positive as compared to negative outcomes. 
+This is known as the self-serving bias, where people claim more credit for positive events, while they duck responsibility for negative events (Caine & Schlenker, 1979; Forsyth & Schlenker, 1977; Leary & Forsyth, 1987; Miller & Schlenker, 1985).
+This bias however does not seem to be purely selfish: it also appears when people judge their group or another person’s responsibility (Palmeira et al., 2015; Taylor & Doria, 1981). 
+For example, in the context of advising, people exhibit an ‘other-serving’ bias as they tend to credit more than blame an advisor (Palmeira et al., 2015). 
+
+In individual contexts, the rewards naturally seem to belong to the person producing a positive or negative outcome. 
+In a group decision however, the outcome may be shared or given to one group member. 
+It has been established that responsibility underlies ownership: control and intent of an action, which are directly associated with responsibility attributions, also predict whether a person is perceived as the owner of an object (Palamar et al., 2012). 
+If attributions of responsibility predict ownership, is the opposite true?
+Here we would like to address 1) whether _Outcome ownership_ changes attributions of responsibility and 2) whether _Outcome ownership_ is necessary for the self-serving and/or other-serving bias to appear.  
+We investigate this question in a group decision-making context, where only one member can receive the outcome in each round. 
+
+Participants will perform an online task where they make collective decisions through majority votes, then one member of the group can receive either a _Reward_ or _No reward_. 
+Finally they will rate the responsibility of the group members for the outcome. 
+This paradigm will allow us to address both questions stated above: 
+
+1. by investigating whether responsibility attribution increases for the _Outcome owner_, although the control over the outcome is exactly similar. 
+
+2. By checking whether the self and other-serving bias of higher responsibility ratings for positive outcomes depend on _Outcome ownership_. 
+
+In other words, we will answer the question: do people exhibit the same self-serving bias when judging the responsibility for an outcome that is attributed to another member of their group? 
+Do they also still exhibit an ‘other-serving’ bias when judging the responsibility of another group member who did not receive the outcome?
+We will also investigate (1b) whether self- and other-serving biases are of similar strength.
+
+The study reported here is the third pilot study.
+In this study, participants provided a rating of responsibility for themself and the two other players after the outcome on every trial.
+For consistency with other studies in this series, we describe it as having a 2x2x2x2 factor structure, with all factors within-subjects:
+
+* Whether the rated player is the _Outcome recipient_:  
+    * _Outcome owner_ versus _Not outcome owner_  
+* The _Outcome valence_:  
+    * _Reward_ versus _No reward_  
+* The _Vote status_ of the participant in the group decision process:  
+    * _Participant in majority_ versus _Participant in minority_  
+* Whether the _Responsibility judgement_ is made about:  
+    * _Own responsibility_ versus _Another's responsibility_  
+
 # Method
+
+## Statistical analysis
+
+The primary analysis technique is ANOVA (Bayesian and frequentist). 
+Bayesian ANOVA results are obtained by taking the likelihood of a model with the effect of interest plus all simpler effects compared to an alternative containing only the simpler effects. 
+For main effects, this is the model for the effect alone compared to the intercept-only model; for one-way interactions this is the main effects plus interaction-of-interest model compared to the main effects only model.
+
+## Materials
+
+Experiments were custom-written in HTML/CSS/JavaScript using the [jsPsych framework](https://www.jspsych.org/) and undertaken by participants over the internet using their own devices.
+The experiment code was written by Marwa El Zein and Matt Jaquiery.
+
+## Procedure
+
+The entry point to the study is through recruitment on the Prolific (https://prolific.ac/) participant recruitment platform.
+Participants accepting the study are forwarded to the experiment website, where they provide informed consent for participation before entering the main experiment page.
+The experiment begins with detailed instruction pages which describe the structure of each round in the game, with screenshots of each stage, followed by a short training trial sequence.
+Once they have read the instructions and familiarised themselves with the game, participants begin the main experiment, which consists of 3 blocks of 20 trials.
+The 20 trials are a randomised sequence of balanced repetitions of each of the 8 unique trial types (as defined by whether the outcome is a reward/no reward; whether the participant is in the majority/minority; and whether the participant receives the outcome).
+The a reward/no reward trials and the trials with the participant in the majority/minority occurred equally frequently, while the participant received the outcome on 40% of all trials (because we wanted to maximise this variation but felt that 50% of trials might be noticeably unrealistic with four other players in the game).
+
+Each trial begins with a display of the five players.
+This is followed by a screen in which the participant selects one of two gamble images.
+Gamble images are selected from a collection of hand-drawn images of gambling devices and paraphernalia, and are counterbalanced such that each pair of images is shown the same number of times.
+Which gamble is selected has no influence on the outcome of the trial, which is predetermined.
+Once the participant selects a gamble the other option vanishes.
+
+If the participant has not selected a gamble by the end of the choice window, the rest of the trial is cancelled and the participant is shown a warning message which states that they have failed to make a choice in time.
+If the participant did select a gamble, the next screen indicates which gamble has been selected through the majority vote of all five players.
+Next, the gamble is allocated to one of the players and its outcome is shown (a coin for a rewarded trial or a coin with a cross through it for an unrewarded trial).
+
+Finally, the participant is asked to rate their own responsibility for the outcome using a slider.
+The responsibility rating phase lasts until the responsibility ratings has been submitted.
+
+Once all 60 experimental trials have been completed, participants are debriefed, thanked, and returned to Prolific.
+Payment follows once all participants have completed the study and bonuses have been calculated.
 
 ## Open science
 
 ### Preregistration
 
+Experiment 2 was [preregistered on the Open Science Framework platform (OSF)](https://osf.io/bgr94).
+The analysis plan deviated from the preregistration in that participants are removed for using the same gamble choice response key on consecutive trials only if they used the same key for all trials in a block (after removing trials with no response).
+
 ### Open materials
+
+Materials for the studies can be found on the [GitHub repository](https://github.com/mjaquiery/responsibility-by-reward/tree/35474eada0141838972fc86006c61f104a02e835/ATTRRESP) as it stood on 18th June 2020.
 
 ### Open data
 
-# Results
-
-## Descriptive statistics
-
-Load data...
+We are happy to share the experimental data for these pilot studies, but may not upload them to a repository unless requested. 
+Data for the main experiments will available online.
 
 ```{r read data}
 
@@ -71,7 +164,14 @@ d <- read.csv('../data/dataEXP3.csv', sep = ";", stringsAsFactors = F) %>%
 # Remove testing data
 d <- d %>% filter(prolificid != "", prolificid != "Matt")
 
-# !TODO[consider removing 5edbd8c9ec975e0955b42302 who did task twice]
+# inject bloc into d. Really this should be recorded in JS!
+d <- d %>% mutate(bloc = case_when(
+  as.numeric(trial_index) < 12 ~ NA_integer_,
+  as.numeric(trial_index) < 36 ~ 1L,
+  as.numeric(trial_index) < 61 ~ 2L,
+  as.numeric(trial_index) < 87 ~ 3L,
+  T ~ NA_integer_
+))
 
 d
 
@@ -87,30 +187,37 @@ if (any(d$participant_id != 1, na.rm = T))
 d.old <- d
 
 max_missed_trials <- 10
-max_consec_resp <- 10
-expected_trial_n <- 56
+expected_trial_n <- 72 # 3 sets of 2x12 trials
+
+# double_entry
+exclude_ids <- d %>%
+  nest(d = -prolificid) %>%
+  mutate(
+    d = map(d, ~ filter(., subject_id != subject_id[1]))
+  ) %>%
+  unnest(cols = d) %>%
+  select(subject_id) %>% 
+  unique() %>%
+  mutate(double_entry = T)
 
 # max_missed_trials
-exclude_ids <- d %>% 
-  nest(df = -subject_id) %>%
-  mutate(missed_trials = 
-           map_dbl(df, . %>% filter(is.na(responsibility_time_p0),
-                                    is.na(responsibility_time_p1),
-                                    is.na(responsibility_time_p2),
-                                    is.na(responsibility_rating_p0),
-                                    is.na(responsibility_rating_p1),
-                                    is.na(responsibility_rating_p2),
-                                    vote_p0 == "",
-                                    vote_p1 == "",
-                                    vote_p2 == "") %>% nrow()),
-         missed_trials = missed_trials >= max_missed_trials) %>%
-  filter(missed_trials) %>%
-  select(-df)
+exclude_ids <- full_join(
+  exclude_ids,
+  d %>% 
+    nest(df = -subject_id) %>%
+    mutate(missed_trials = 
+             map_dbl(df, . %>% filter(vote_p1 == "") %>% nrow()),
+           missed_trials = missed_trials >= max_missed_trials) %>%
+    filter(missed_trials) %>%
+    select(-df),
+  by = "subject_id"
+)
 
 # expected_trial_n
 exclude_ids <- full_join(
   exclude_ids, 
   d %>%
+    filter(label == 'scaleresp') %>%
     nest(df = -subject_id) %>%
     mutate(df = map_dbl(df, nrow)) %>%
     filter(df < expected_trial_n) %>%
@@ -121,70 +228,124 @@ exclude_ids <- full_join(
 
 # We now remove missed trials
 # Whether we do this BEFORE or AFTER checking consecutive responses matters
-d <- d %>% filter(!is.na(responsibility_time_p0),
-                  !is.na(responsibility_time_p1),
-                  !is.na(responsibility_time_p2),
-                  !is.na(responsibility_rating_p0),
-                  !is.na(responsibility_rating_p1),
-                  !is.na(responsibility_rating_p2),
-                  vote_p0 != "",
-                  vote_p1 != "",
-                  vote_p2 != "")
+d <- d %>% filter(vote_p1 != "")
 
 # max_consec_resp
 exclude_ids <- full_join(
   exclude_ids,
   d %>% 
-    arrange(subject_id, trial_index) %>%
-    mutate(consec = sequence(rle(vote_p1)$lengths)) %>%
-    nest(df = -subject_id) %>%
-    mutate(consec_resp = map_lgl(df, ~ any(.$consec >= max_consec_resp))) %>%
+    nest(d = c(-subject_id, -bloc)) %>%
+    mutate(
+      consec_resp = map_lgl(d, ~ all(.$vote_p1 == .$vote_p1[1]))
+    ) %>%
     filter(consec_resp) %>%
-    select(-df),
+    select(subject_id, consec_resp) %>%
+    unique(),
   by = "subject_id"
 )
 
-exclude_ids
-
 exclude_ids %>% 
-  mutate(unique_exclusions = 1) %>% 
-  select(unique_exclusions, everything(), -subject_id) %>% 
-  summarise_all(sum, na.rm = T)
+  mutate(total_unique_exclusions = 1) %>% 
+  select(everything(), total_unique_exclusions, -subject_id) %>% 
+  summarise_all(sum, na.rm = T) %>% 
+  pivot_longer(cols = everything(), 
+               names_to = 'Reason', 
+               values_to = 'N excluded') %>%
+  apa_table()
 
 d <- d %>% 
   filter(!(subject_id %in% exclude_ids$subject_id)) %>% 
   mutate(
     subject_id = factor(subject_id),
-    status = factor(status, labels = c('p_in_majority', 'p_in_minority')),
-    outcome = factor(outcome, labels = c('reward', 'no reward')),
-    getsout = factor(getsout, labels = c('p0', 'participant', 'p2'))
+    status = factor(status, labels = c('Participant in majority', 
+                                       'Participant in minority')),
+    outcome = factor(outcome, labels = c('Reward', 'No reward')),
+    getsout = factor(getsout, labels = c('Player 0', 'Participant', 'Player 2')),
+    pgetsout = factor(if_else(getsout == "Participant", 1, 2), labels = c(
+      'Participant gets outcome', 'Another gets outcome'
+    ))
   )
 
 ```
 
-Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, more than `r max_consec_resp` consecutive left or right responses, or fewer than `r expected_trial_n` trials recorded. Our final participant list contains `r length(unique(d$subject_id))` participants.
+Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, only used one of the two response keys in a block,[^This exclusion criterion differs from its preregistered form because we inspected the data and judged that participants excluded using the preregistered rule were nevertheless contributing data which looked sensible. Results are highly similar when data are excluded according to the preregistration criterion.] or had fewer than `r expected_trial_n` trials recorded. 
+Our final participant list contains `r length(unique(d$subject_id))` participants.
+
+### Demographics 
+
+```{r}
+
+d %>% 
+  transmute(unique_genders = str_to_upper(gender)) %>% 
+  unique()
+
+gender <- d %>% 
+  select(prolificid, gender) %>% 
+  mutate(gender = str_to_upper(gender)) %>% 
+  unique()
+
+age <- d %>% 
+  select(prolificid, age) %>% 
+  mutate(age = as.numeric(age)) %>%
+  unique()
+
+```
+
+Participants self-reported a mean age of `r pull(age, age) %>% mean() %>% round(1)` (SD = `r pull(age, age) %>% sd() %>% round(1)`) years and their genders as M (`r gender %>% filter(gender == 'M') %>% nrow()`), F (`r gender %>% filter(gender == 'F') %>% nrow()`), or otherwise (`r gender %>% filter(gender != 'M' & gender != 'F') %>% nrow()`).
+
+Data were collected on the following days:
+
+```{r experiment dates, results = 'asis'}
+d %>%
+  select(subject_id, date) %>%
+  unique() %>%
+  group_by(date) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  rename(Date = date, Participants = n) %>%
+  apa_table()
+
+```
 
 ### Response times
 
+```{r}
+max_rt <- 30000
+```
+
 Participants make four responses on a trial, choosing a gamble and indicating how responsible each of the players was for the decision. 
 
-```{r all-rt, fig.height=14, fig.width=6}
+```{r response time visualisations, fig.height=14, fig.width=6}
 
 tmp <- d %>% 
   select(subject_id, time_choice_start, time_choice_made, starts_with('responsibility_time')) %>%
   pivot_longer(c(time_choice_made, starts_with('responsibility_time')),
-               names_to = "event", 
-               values_to = "time_from_choice_start") %>%
-  mutate(time_from_choice_start = time_from_choice_start - time_choice_start) %>%
-  mutate(event = case_when(
-    str_detect(event, 'responsibility_time') ~ str_extract(event, 'p[0-9]+$'),
-    T ~ event)
-  )
+               names_to = "Event", 
+               values_to = "Time") %>%
+  mutate(Time = Time - time_choice_start) %>%
+  mutate(Event = case_when(
+    str_detect(Event, 'responsibility_time') ~ str_extract(Event, 'p[0-9]+$'),
+    T ~ Event)
+  ) %>%
+  filter(!is.na(Event) & !is.na(Time)) %>%
+  rename(Participant = subject_id)
 
-ggplot(tmp, aes(y = subject_id, x = time_from_choice_start, fill = event, colour = event)) +
+# Replace out-of-scale values with a count of dropped values
+dropped <- tmp %>%
+  # nest(n = -Participant) %>%
+  # mutate(n = map_dbl(n, ~ filter(., Time > max_rt) %>% nrow()))
+  group_by(Participant) %>%
+  filter(Time > max_rt) %>%
+  transmute(n = n())
+
+tmp <- tmp %>% filter(Time <= max_rt)
+
+ggplot(tmp, aes(y = Participant, x = Time, fill = Event, colour = Event)) +
   geom_vline(xintercept = 2000, linetype = 'dashed', colour = 'grey75') +
   geom_density_ridges(alpha = .25) +
   geom_point(position = position_jitter(0, .05), alpha = .25) +
+  geom_text(aes(label = paste0('... +', dropped$n), y = Participant),
+            inherit.aes = F, x = max_rt, colour = 'grey', data = dropped) +
+  scale_x_continuous(limits = c(0, max_rt)) +
   theme(
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank(),
@@ -192,6 +353,7 @@ ggplot(tmp, aes(y = subject_id, x = time_from_choice_start, fill = event, colour
   )
 
 ```
+
 
 ### Feeling of responsibility scale usage
 
@@ -201,7 +363,8 @@ tmp <- d %>%
   pivot_longer(starts_with('responsibility_rating_p'),
                names_to = 'rated_player',
                values_to = 'response') %>%
-  mutate(rated_player = str_extract(rated_player, 'p[0-9]+$')) %>%
+  mutate(rated_player = str_extract(rated_player, 'p[0-9]+$'),
+         rated_player = if_else(rated_player == 'p1', 'Participant', rated_player)) %>%
   select(subject_id, response, rated_player) %>%
   nest(df = -subject_id) %>%
   mutate(sum = map_dbl(df, ~ sum(.$response))) %>%
@@ -212,86 +375,238 @@ ggplot(tmp, aes(x = response, y = factor(subject_id),
                 colour = rated_player, fill = rated_player)) +
   geom_density_ridges(alpha = .25) +
   scale_x_continuous(limits = c(0, 100)) +
+  labs(y = 'Participant', x = 'Responsibility rating') +
+  scale_colour_discrete(name = 'Rated player', aesthetics = c('colour', 'fill')) +
   theme(
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank(),
     legend.position = 'top'
-  )
+  ) 
 
 ```
 
 ## Inferential statistics
 
-* 2 (outcome) x 2 (participant majority) x 3 (recipient)  
+Participants make one rating of responsibility for each of the three players (including themself) on each trial. 
+These data are averaged in order to conduct ANOVA by organising each rating on each trial according to the following factors:
+
 * ANOVA:  
-    * 2x outcome  
-    * 2x isParticipant  
-    * 2x getsOutcome  
-    * 2x participantInMajority  
+    * _Outcome valence_: Whether the trial result is _Reward_ or _No reward_  
+    * _Outcome recipient_: Whether the rated player is the _Outcome owner_ or _Not outcome owner_  
+    * _Is participant_: Whether the rated player is the _Participant_ or _Another player_  
+    * _Vote status_: Whether the _Participant is in the majority_ or _minority_ in the gamble choice  
 
 ```{r}
+
+#' GGplot2 helper function to get offset x coordinates to the left or right
+#' depending on whether the x coordinate is to the left or right.
+#' @param x vector of x coordinates (typically factors)
+#' @param amount amount to nudge in the appropriate direction
+#' @param direction to nudge. 'outwards' is towards the extremes, 'inwards' is towards the centre.
+nudge <- function(x, amount, direction = 'outwards') {
+  if (!is.factor(x))
+    x <- factor(x)
+  x <- as.numeric(x) 
+  dir <- if (direction == 'outwards') 1 else -1
+  x + sign(x - mean(range(x, na.rm = T))) * dir * amount
+}
+
+
 d.long <- d %>% 
   pivot_longer(cols = starts_with('responsibility_rating_p'),
                names_to = 'rated_player',
                values_to = 'responsibility_rating') %>%
   mutate(rated_player = str_extract(rated_player, 'p[0-9]+$'),
-         is_participant = factor(if_else(rated_player == 'p1',
-                                         'participantRated',
-                                         'otherRated')))
+         rated_player = case_when(rated_player == 'p0' ~ 'Player 0', 
+                                  rated_player == 'p1' ~ 'Participant',
+                                  rated_player == 'p2' ~ 'Player 2'),
+         is_participant = factor(if_else(rated_player == 'Participant',
+                                         'ratingForParticipant',
+                                         'ratingForOther')),
+         gout = if_else(getsout == 'Participant', 
+                        'Participant', as.character(getsout)),
+         rated_gets_outcome = str_detect(rated_player, paste0(gout)),
+         rated_gets_outcome = factor(if_else(rated_gets_outcome, 
+                                             'ratedGetsOutcome',
+                                             'otherGetsOutcome')),
+         `Outcome recipient` = if_else(
+           rated_gets_outcome == "ratedGetsOutcome",
+           "Outcome owner", "Not outcome owner"
+         ),
+         `Outcome valence` = outcome)
 
+```
+
+### 1) Are players considered more responsible if they are the _Outcome owner_?
+
+```{r effect of getting the outcome}
+dw <- .075
+
+tmp <- d.long %>% 
+  group_by(subject_id, `Outcome recipient`) %>%
+  summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') 
+
+bf <- ttestBF(
+  x = tmp$responsibility_rating[tmp$`Outcome recipient` == 'Not outcome owner'],
+  y = tmp$responsibility_rating[tmp$`Outcome recipient` != 'Not outcome owner'],
+  paired = T
+)
+
+bf <- exp(bf@bayesFactor$bf) %>% round(2)
+
+ggplot(tmp, aes(x = `Outcome recipient`, y = responsibility_rating)) +
+  geom_line(aes(group = subject_id), colour = 'grey') +
+  geom_boxplot(outlier.colour = NA, width = dw,
+               aes(x = nudge(`Outcome recipient`, dw),
+                   group = `Outcome recipient`)) +
+  geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
+  geom_label(x = 1.5, y = 101, label = paste0('BF = ', bf)) +
+  scale_x_discrete(expand = c(0, dw * 4)) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(y = 'Rating of responsibility')
+
+```
+
+The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
+Participants rate players' responsibility as higher when that player receives the outcome.
+
+### 2) Does the other-serving bias, i.e, higher responsibility for positive _Outcome valence_, change if the rated player is _Not outcome owner_?
+
+```{r interaction of outcome valence and getting the outcome}
+
+tmp <- d.long %>% 
+  group_by(subject_id, `Outcome recipient`, `Outcome valence`) %>%
+  summarise(responsibility_rating = mean(responsibility_rating), 
+            .groups = 'drop')
+
+bf <- tmp %>%
+  nest(d = -`Outcome recipient`) %>%
+  mutate(
+    bf = map(d, ~ ttestBF(
+      x = .$responsibility_rating[.$`Outcome valence` == 'No reward'],
+      y = .$responsibility_rating[.$`Outcome valence` != 'No reward'],
+      paired = T
+    )),
+    bf = map_dbl(bf, ~ .@bayesFactor %>% .$bf %>% exp() %>% round(2))
+  ) %>%
+  select(-d)
+
+ggplot(tmp, aes(x = `Outcome valence`, y = responsibility_rating)) +
+  geom_line(aes(group = subject_id), colour = "grey") +
+  geom_boxplot(outlier.colour = NA, width = dw,
+               aes(x = nudge(`Outcome valence`, dw),
+                   group = `Outcome valence`)) +
+  geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
+  geom_label(aes(label = paste0('BF = ', bf)), x = 1.5, y = 101, data = bf) +
+  scale_x_discrete(expand = c(0, dw * 4)) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(y = 'Rating of responsibility') +
+  facet_wrap(~paste0('When ', `Outcome recipient`))
+
+```
+
+The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
+The 'self/other-serving bias' is evident on trials where the rated player gets the outcome than where another player gets the outcome. 
+
+We explored this statistically with a 2x2x2x2 ANOVA 
+
+
+```{r}
 dw <- .25
+
 d.long %>%
-  group_by(subject_id, status, outcome, getsout, is_participant) %>% 
-  summarise(response = mean(responsibility_rating)) %>%
-  ggplot(aes(x = outcome, y = response, colour = getsout)) +
-  geom_hline(yintercept = 20, linetype = 'dashed') +
+  group_by(subject_id, status, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
+  summarise(responsibility_rating = mean(responsibility_rating)) %>%
+  mutate(
+    `Is participant` = if_else(is_participant == "ratingForOther",
+                             "...for Non-participant", 
+                             "...for Participant")
+  ) %>%
+  ggplot(aes(x = `Outcome valence`, y = responsibility_rating, colour = `Outcome recipient`)) +
+  geom_hline(yintercept = 100 / 3, linetype = 'dashed') +
   geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = getsout), size = 5, fun.y = mean,
+  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
+               fun = mean, position = position_dodge(dw), shape = 0) +
+  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
+               fun.data = mean_cl_normal, position = position_dodge(dw)) +
+  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`), 
                position = position_dodge(dw)) +
-  stat_summary(geom = "errorbar", aes(group = getsout), width = 0, fun.data = mean_cl_normal,
-               position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun.y = mean, aes(group = getsout), position = position_dodge(dw)) +
-  facet_grid(is_participant~status)
+  scale_colour_discrete(h.start = 180) +
+  facet_grid(`Is participant`~status) +
+  labs(x = "Gamble outcome", 
+       y = "Participant rating of responsibility...")
 
 ```
 
 ```{r}
 
-a <- ezANOVA(
-  data = d.long,
-  dv = responsibility_rating,
-  wid = subject_id,
-  within = c(
-    outcome,
-    getsout,
-    status,
-    is_participant
+suppressWarnings({
+  a <- ezANOVA(
+    data = d.long,
+    dv = responsibility_rating,
+    wid = subject_id,
+    within = c(
+      outcome,
+      rated_gets_outcome,
+      status,
+      is_participant
+    )
   )
-)
+})
 
-a
+a %>%
+  apa_table()
 
+```
+
+```{r}
 a.bf = anovaBF(
-  data = d.long,
+  data = as.data.frame(d.long),
   formula = responsibility_rating ~ 
-    outcome + getsout + status + is_participant + subject_id,
+    outcome + rated_gets_outcome + status + is_participant + subject_id,
   whichRandom = 'subject_id', progress = F
 )
 
-a.bf
+a.bf %>% 
+  marginalBF(comparisons = list(
+    # 1, 2, 5, # Main effect vs random effects model
+    c(27, 25), c(27, 8), c(27, 26), c(27, 22), # Main effects vs model with other main effects
+    c(56, 27), c(28, 27), c(42, 27), c(33, 27), c(86, 27), c(30, 27), # 2-way interactions vs main effects model
+    c(131, 126), c(156, 126), c(127, 126), c(142, 126), # 3-way interactions vs 2-way interactions model
+    c(166, 165) # 4-way interaction vs 3-way interactions model
+  )) %>%
+  mutate(` ` = case_when(BF.M1.M2 < 1/3 ~ '-', 
+                                   BF.M1.M2 > 3 ~ '+', 
+                                   T ~ '')) %>%
+  apa_table()
+
 ```
 
-# Discussion
+There are both areas of overlap and areas of disagreement between the Bayesian and frequentist ANOVAs.
+These approaches agree on the presence of main effects for _Outcome valence_, _Outcome recipient_, and _Vote status_, but while the Bayesian ANOVA shows evidence of an effect of whether the rated player _Is the participant_, this effect is non-significant.
+
+For two-way interactions, the approaches agree on the presence of interactions between _Outcome valence_ and _Outcome recipient_, between _Outcome recipient_ and _Vote status_, and between _Vote status_ and whether the rated player _Is the participant_.
+The Bayesian test was inconclusive for the _Outcome valence_ and _Vote status_ interaction, and the effect was non-signficant.
+The frequentist tests showed significant effects for the other two-way interactions (for _Outcome valence_ and _Is participant_ and for _Outcome recipient_ and _Is participant_), but the Bayesian tests were inconclusive for both of these effects.
+
+The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Vote status_ was significant, but inconclusive. 
+The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Is participant_ was significant but the Bayesian test suggested evidence for a null effect.
+Neither the remaining three-way interactions nor the four-way interaction were significant, and all showed evidence for the null. 
+
+# Interpretation
+
+Players are considered more responsible if they get the outcome than otherwise.
+The bias towards greater responsibility ratings for Reward as opposed to No reward outcomes appears to be largely confined to the player receiving the outcome.
+Whether the participant's vote is for the decision which gets taken appears to matter more than whether the player rated is the participant or not, at least in terms of the way these factors interact with the valence and recipient of the reward.
+
 
 # Credits 
 
-## Acknowledgements
-
-
+<!-- ## Acknowledgements -->
 
 ## R Packages
 
-```{r results = 'asis'}
+```{r R packages, results = 'asis'}
 # list packages
 packageNames <- (.packages())
 # don't include very core package
@@ -308,18 +623,20 @@ for (p in packageNames) {
                                                    collapse = '<br/><br/>')))
 }
 
-as_tibble(out)
+out %>% apa_table()
 ```
 
 ## Funding
 
-Marwa El Zein is funded by ... 
+Marwa El Zein is a Sir Henry Wellcome Postdoctoral Fellow at University College London, funded by The Wellcome Trust.
 
 Matt Jaquiery is funded by a studentship from the [Medical Research Council](https://mrc.ukri.org/) (reference 1943590) and the University of Oxford [Department of Experimental Psychology](https://www.psy.ox.ac.uk/) (reference 17/18_MSD_661552).
 
+<hr/>
+
 ## Technical details  
 
-```{r results = 'hold'}
+```{r technical details, results = 'hold'}
 cat(paste('Time stamp:', Sys.time(), '\n\n'))
 cat('Runtime \n')
 proc.time()
