@@ -1,0 +1,206 @@
+---
+title: "Empirical power analysis for three-player variant"
+author: "Matt Jaquiery (matt.jaquiery@psy.ox.ac.uk)"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '3'
+    # css: ../src/writeUp.css
+    # includes:
+      # after_body: ../src/toc_menu.html
+editor_options:
+  chunk_output_type: inline
+---
+
+October 2020
+
+[Script run `r Sys.time()`]
+
+# Feelings of Responsibility by Receivership of Reward
+## Marwa El Zein and Matt Jaquiery
+
+On the basis of several pilot experiments, we have arrived at a design with one participant and two simulated players making decisions on each trial, and with the participant rating the responsibility of every player on all trials.
+The most subtle effect of interest to us is the three-way interaction between Outcome Valence, Outcome Recipient, and whether the rated player is the participant.
+We therefore run simulations (using participants' actual data as a template) to explore how many participants we might need to detect an interaction effect of d = .3 against a background of the other effects being sized as they were for the real participants.
+
+### Structure
+
+The task structure occurs in sets of 20 trials (1:1 ratios for minority/majority and no/reward, and 2:3 ratio for participant/other rewarded). There are three of these sets in a study. Below we use an example simulation of one study of one participant to demonstrate the trial structure:
+
+```{r echo=T}
+library(tidyverse)
+
+source("generate-data.R")
+betas <- list('8' = .3)  # 3-way interaction is the 8th parameter
+n <- 50
+path_adjust <- '../'
+
+# generate-data.R exports this function
+generateData.full(n, betas, path_adjust)
+
+```
+
+### Power analysis
+
+First we define a function which will run the simulations and perform ANOVA on the results. 
+
+```{r echo=T}
+
+#' @param r repetitions to run
+#' @param n number of participants to simulate in each repetition
+#' @param betas betas to override in participant data
+#' @param printTo location to save output if desired
+sim <- function(r, betas, n = 50, printTo = NULL) {
+  require(ez)
+  require(purrr)
+  require(magrittr)
+  require(dplyr)
+  require(tidyr) # required by generateData.full
+  require(tibble) # required by generateData.full
+  require(stringr) # required by generateData.full
+  
+  aovs <- tibble(
+    repetition = r,
+    beta8 = betas[['8']],
+    n = n,
+    d = map(1, ~generateData.full(n, betas, path_adjust))
+  )
+  
+  suppressWarnings(
+    aovs <- aovs %>%
+      mutate(
+        aov = map(
+          d, 
+          ~ezANOVA(
+            data = .,
+            dv = responsibility_rating,
+            wid = simID,
+            within = .(
+              outcome, 
+              rated_gets_outcome, 
+              is_participant
+            )
+          )
+        )
+      )
+  )
+  
+  # fetch unique contribution of the outcome:pGetsOutcome interaction in anova and anovaBF
+  f <- function(x) 
+    x$ANOVA %>% 
+    filter(Effect == 'outcome:rated_gets_outcome:is_participant') %>% 
+    .$p
+  aovs <- aovs %>%
+    mutate(p = map_dbl(aov, f))
+  
+  out <- aovs %>% select(-d, -aov)
+  
+  if (!is.null(printTo)) 
+    write.table(
+      out, 
+      printTo, 
+      sep = ",", 
+      append = T, 
+      col.names = F, 
+      row.names = F
+    )
+  
+  out
+}
+
+```
+
+Then we set that to run in parallel for some number of repetitions.
+
+```{r echo=T}
+newData <- F
+if (newData) {
+  library(parallel)
+  
+  reps <- 100
+  params <- crossing(
+    repetition = 1:reps,
+    n = c(5, 25, 50, 150, 500, 5000),
+    es = c(0, .05, .15, .25, .5)
+  )
+  
+  timeStart <- Sys.time()
+  
+  cl <- makeCluster(detectCores() - 4)
+  
+  clusterExport(cl, c("sim", "reps", "generateData.full", "path_adjust"))
+  
+  aovs <- parApply(cl, params, 1, FUN = function(r) {
+    sim(r = r['repetition'], n = r['n'], betas = list('8' = r['es']))
+  })
+  
+  stopCluster(cl)
+  
+  timeEnd <- Sys.time()
+  
+  print(paste0(
+    "Data generation complete. Generated ",
+    length(aovs), " ANOVAs in ",
+    round(difftime(timeEnd, timeStart, units = "secs"), 2), "s."
+  ))
+  
+  # join list to table structure
+  aovs <- tibble(id = 1:length(aovs)) %>%
+    mutate(d = map(id, ~aovs[[.]])) %>%
+    unnest(cols = d)
+  
+  # save the list for later because it takes hours!
+  write.table(
+    aovs, 
+    'tmp-data/three-player-aovs.csv', 
+    sep = ",", 
+    append = F, 
+    col.names = T, 
+    row.names = F
+  )
+} else {
+  aovs <- read.csv('tmp-data/three-player-aovs.csv')
+}
+
+```
+
+Finally we print some results
+
+```{r}
+
+alpha = .05
+
+aovs %>% 
+  group_by(beta8, n) %>%
+  summarise(pSig = mean(p < alpha), .groups = 'drop') %>%
+  mutate(across(-pSig, factor)) %>%
+  ggplot(aes(x = n, y = beta8, fill = pSig)) +
+  geom_tile() +
+  geom_text(aes(label = round(pSig, 3)), colour = "white") +
+  scale_fill_continuous(name = "P(p < .05)", limits = c(0, 1)) +
+  labs(
+    title = "Heatmap of the probability of a significant result",
+    y = "3-way interaction effect size (d)",
+    x = "Number of participants"
+  )
+
+aovs %>% 
+  select(p, beta8, n) %>%
+  mutate(across(-p, factor)) %>%
+  ggplot(aes(x = p, y = beta8)) +
+  geom_vline(xintercept = .05, linetype = 'dashed') +
+  ggridges::geom_density_ridges() +
+  facet_wrap(~n)
+
+```
+
+## Technical details  
+
+```{r results = 'hold'}
+cat(paste('Time stamp:', Sys.time(), '\n\n'))
+cat('Runtime \n')
+proc.time()
+cat('\n')
+sessionInfo()
+```

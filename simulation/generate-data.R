@@ -104,3 +104,110 @@ generateData <- function(
   # Return without the ps fields
   data_generator %>% select(names(data))
 }
+
+#' Generate data based on real participants/summary stats.
+#' @param n number of cases to generate
+#' @param betas list of betas to use instead of deriving them in the form \code{list('0' = 0, '2' = 0.3)}
+#' @details The model used is:
+#'   $$responsibilityRating ~ 
+#'     \beta_1 + 
+#'     \beta_2 ratedGetsOutcome + 
+#'     \beta_3 outcomeGood + 
+#'     \beta_4 isParticipant + 
+#'     \beta_5 outcomeGood:ratedGetsOutcome 
+#'     \beta_6 ratedGetsOutcome:isParticipant + 
+#'     \beta_7 outcomeGood:isParticipant + 
+#'     \beta_8 outcomeGood:ratedGetsOutcome:isParticipant$$
+#' The betas correspond to the standardized effect size of each parameter. 
+#' Betas can be specified as functions in which case they will be called with
+#' the number of participant simulated and should return a vector of the same 
+#' length (e.g. the way the \link{stats::rnorm} function works)
+#' 
+generateData.full <- function(n, betas = list(), path_to_root_dir = '') {
+  # Load data
+  d <- read.csv(
+    paste0(path_to_root_dir, 'data/dataEXP3.csv'), 
+    sep = ";", 
+    stringsAsFactors = F
+  ) %>% 
+    as_tibble() 
+  
+  # Remove testing data
+  d <- d %>% filter(prolificid != "", prolificid != "Matt")
+  
+  # Reformat to long
+  d <- d %>%
+    pivot_longer(cols = starts_with('responsibility_rating_p'),
+                 names_to = 'rated_player',
+                 values_to = 'responsibility_rating') %>%
+    filter(!is.na(responsibility_rating)) %>%
+    mutate(
+      rated_player = factor(str_match(rated_player, 'p[0-9]+$')),
+      is_participant = factor(rated_player == "p1"),
+      rated_gets_outcome = factor(rated_player == paste0("p", getsout)),
+      outcome = factor(outcome == 1)
+    )
+  
+  # Select a sample of participants with replacement
+  d <- d %>% 
+    nest(obs = -subject_id) %>%
+    rename(simID = subject_id) %>% 
+    slice_sample(n = n, replace = T)
+  
+  # Apply a linear model to each case to get the sim parameters
+  d <- mutate(
+    d,
+    obs = map(
+      obs, 
+      ~mutate(., responsibility_rating.z = scale(responsibility_rating))
+    ),
+    rr_mean = map_dbl(obs, ~mean(.$responsibility_rating)),
+    rr_sd = map_dbl(obs, ~sd(.$responsibility_rating)),
+    m = map(
+      obs, 
+      ~ lm(responsibility_rating.z ~
+             rated_gets_outcome * outcome * is_participant,
+           data = .)
+    ),
+    coefs = map(m, broom::tidy)
+  )
+  
+  # Inject specified betas
+  for (x in names(betas)) {
+    v <- if (is_function(betas[[x]])) betas[[x]](n) else rep(betas[[x]], n)
+    for (i in 1:n)
+      d$coefs[[i]]$estimate[as.numeric(x)] <- v[i]
+  }
+  
+  # Sim new data with each simulated participant
+  d %>%
+    mutate(
+      sim = map2(
+        obs,
+        coefs,
+        ~mutate(
+          .x,
+          responsibility_rating.z =
+            .y$estimate[1] +
+            .y$estimate[2] * (rated_gets_outcome == T) +
+            .y$estimate[3] * (outcome == T) +
+            .y$estimate[4] * (is_participant == T) +
+            .y$estimate[5] * (rated_gets_outcome == T) * (outcome == T) +
+            .y$estimate[6] * (rated_gets_outcome == T) * (is_participant == T) +
+            .y$estimate[7] * (outcome == T) * (is_participant == T) +
+            .y$estimate[8] * (rated_gets_outcome == T) * (outcome == T) * (is_participant == T)
+        ) 
+      )
+    ) %>%
+    select(-obs, -coefs, -m) %>%
+    unnest(cols = sim) %>%
+    mutate(
+      responsibility_rating = rr_mean + responsibility_rating.z * rr_sd,
+      responsibility_rating = case_when(
+        responsibility_rating < 0 ~ 0,
+        responsibility_rating > 100 ~ 100,
+        T ~ responsibility_rating
+      )
+    ) %>% 
+    select(-rr_mean, -rr_sd)
+}
