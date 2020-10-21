@@ -158,7 +158,7 @@ Materials for the studies can be found on the [GitHub repository](https://github
 
 ### Open data
 
-We are happy to share the experimental data for these pilot studies, but may not upload them to a repository unless requested. 
+We are happy to share the experimental data for these pilot studies on request. 
 Data for the main experiments will available online.
 
 
@@ -424,7 +424,8 @@ tmp <- d %>%
   prettify() %>%
   group_by(subject_id, `Outcome recipient`) %>%
   filter(!is.na(response)) %>%
-  summarise(response = mean(response), .groups = 'drop') 
+  summarise(response = mean(response), .groups = 'drop') %>%
+  mutate(`Outcome recipient` = fct_rev(`Outcome recipient`))
 
 bf <- ttestBF(
   x = tmp$response[tmp$`Outcome recipient` == 'Not outcome owner'],
@@ -708,7 +709,7 @@ out %>% apa_table()
 
 ## Funding
 
-Marwa El Zein is a Sir Henry Wellcome Postdoctoral Fellow at University College London, funded by The Wellcome Trust.
+Marwa El Zein is a Sir Henry Wellcome Postdoctoral Fellow at University College London, funded by The Wellcome Trust (grant number 204702).
 
 Matt Jaquiery is funded by a studentship from the [Medical Research Council](https://mrc.ukri.org/) (reference 1943590) and the University of Oxford [Department of Experimental Psychology](https://www.psy.ox.ac.uk/) (reference 17/18_MSD_661552).
 

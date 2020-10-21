@@ -99,6 +99,7 @@ For consistency with other studies in this series, we describe it as having a 2x
     * _Reward_ versus _No reward_  
 * The _Vote status_ of the participant in the group decision process:  
     * _Participant in majority_ versus _Participant in minority_  
+    * Although this factor is part of the design, the complexity added to the statistical analysis does not justify its inclusion, so it does not form part of the main statistical analysis.  
 * Whether the _Responsibility judgement_ is made about:  
     * _Own responsibility_ versus _Another's responsibility_  
 
@@ -144,7 +145,7 @@ Payment follows once all participants have completed the study and bonuses have 
 
 ### Preregistration
 
-Experiment 2 was [preregistered on the Open Science Framework platform (OSF)](https://osf.io/bgr94).
+Experiment 3 was [preregistered on the Open Science Framework platform (OSF)](https://osf.io/bgr94).
 The analysis plan deviated from the preregistration in that participants are removed for using the same gamble choice response key on consecutive trials only if they used the same key for all trials in a block (after removing trials with no response).
 
 ### Open materials
@@ -153,7 +154,7 @@ Materials for the studies can be found on the [GitHub repository](https://github
 
 ### Open data
 
-We are happy to share the experimental data for these pilot studies, but may not upload them to a repository unless requested. 
+We are happy to share the experimental data for these pilot studies on request. 
 Data for the main experiments will available online.
 
 ```{r read data}
@@ -331,8 +332,6 @@ tmp <- d %>%
 
 # Replace out-of-scale values with a count of dropped values
 dropped <- tmp %>%
-  # nest(n = -Participant) %>%
-  # mutate(n = map_dbl(n, ~ filter(., Time > max_rt) %>% nrow()))
   group_by(Participant) %>%
   filter(Time > max_rt) %>%
   transmute(n = n())
@@ -393,8 +392,7 @@ These data are averaged in order to conduct ANOVA by organising each rating on e
 * ANOVA:  
     * _Outcome valence_: Whether the trial result is _Reward_ or _No reward_  
     * _Outcome recipient_: Whether the rated player is the _Outcome owner_ or _Not outcome owner_  
-    * _Is participant_: Whether the rated player is the _Participant_ or _Another player_  
-    * _Vote status_: Whether the _Participant is in the majority_ or _minority_ in the gamble choice  
+    * _Is participant_: Whether the rated player is the _Participant_ or _Another player_   
 
 ```{r}
 
@@ -470,7 +468,7 @@ ggplot(tmp, aes(x = `Outcome recipient`, y = responsibility_rating)) +
 The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
 Participants rate players' responsibility as higher when that player receives the outcome.
 
-### 2) Does the other-serving bias, i.e, higher responsibility for positive _Outcome valence_, change if the rated player is _Not outcome owner_?
+### 2) Does the self/other-serving bias, i.e, higher responsibility for positive _Outcome valence_, change if the rated player is _Not outcome owner_?
 
 ```{r interaction of outcome valence and getting the outcome}
 
@@ -506,17 +504,17 @@ ggplot(tmp, aes(x = `Outcome valence`, y = responsibility_rating)) +
 ```
 
 The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
-The 'self/other-serving bias' is evident on trials where the rated player gets the outcome than where another player gets the outcome. 
+The 'self/other-serving bias' is evident on trials where the rated player gets the outcome, but not where another player gets the outcome. 
 
-We explored this statistically with a 2x2x2x2 ANOVA 
+We explored this statistically with a 2x2x2 ANOVA 
 
 
 ```{r}
 dw <- .25
 
 d.long %>%
-  group_by(subject_id, status, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
-  summarise(responsibility_rating = mean(responsibility_rating)) %>%
+  group_by(subject_id, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
+  summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') %>%
   mutate(
     `Is participant` = if_else(is_participant == "ratingForOther",
                              "...for Non-participant", 
@@ -532,7 +530,7 @@ d.long %>%
   stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`), 
                position = position_dodge(dw)) +
   scale_colour_discrete(h.start = 180) +
-  facet_grid(`Is participant`~status) +
+  facet_wrap(~`Is participant`) +
   labs(x = "Gamble outcome", 
        y = "Participant rating of responsibility...")
 
@@ -548,9 +546,9 @@ suppressWarnings({
     within = c(
       outcome,
       rated_gets_outcome,
-      status,
       is_participant
-    )
+    ),
+    type = 3
   )
 })
 
@@ -560,45 +558,77 @@ a %>%
 ```
 
 ```{r}
+
 a.bf = anovaBF(
   data = as.data.frame(d.long),
   formula = responsibility_rating ~ 
-    outcome + rated_gets_outcome + status + is_participant + subject_id,
-  whichRandom = 'subject_id', progress = F
+    outcome * rated_gets_outcome * is_participant * subject_id,
+  whichRandom = 'subject_id', progress = F, whichModels = 'top'
 )
 
-a.bf %>% 
-  marginalBF(comparisons = list(
-    # 1, 2, 5, # Main effect vs random effects model
-    c(27, 25), c(27, 8), c(27, 26), c(27, 22), # Main effects vs model with other main effects
-    c(56, 27), c(28, 27), c(42, 27), c(33, 27), c(86, 27), c(30, 27), # 2-way interactions vs main effects model
-    c(131, 126), c(156, 126), c(127, 126), c(142, 126), # 3-way interactions vs 2-way interactions model
-    c(166, 165) # 4-way interaction vs 3-way interactions model
-  )) %>%
-  mutate(` ` = case_when(BF.M1.M2 < 1/3 ~ '-', 
-                                   BF.M1.M2 > 3 ~ '+', 
-                                   T ~ '')) %>%
-  apa_table()
+a.bf
+
+plot(a.bf)
 
 ```
 
 There are both areas of overlap and areas of disagreement between the Bayesian and frequentist ANOVAs.
-These approaches agree on the presence of main effects for _Outcome valence_, _Outcome recipient_, and _Vote status_, but while the Bayesian ANOVA shows evidence of an effect of whether the rated player _Is the participant_, this effect is non-significant.
+These approaches agree on the presence of main effects for _Outcome valence_, and _Outcome recipient_, but while the Bayesian ANOVA shows evidence of an effect of whether the rated player _Is the participant_, this effect is non-significant.
 
-For two-way interactions, the approaches agree on the presence of interactions between _Outcome valence_ and _Outcome recipient_, between _Outcome recipient_ and _Vote status_, and between _Vote status_ and whether the rated player _Is the participant_.
-The Bayesian test was inconclusive for the _Outcome valence_ and _Vote status_ interaction, and the effect was non-signficant.
-The frequentist tests showed significant effects for the other two-way interactions (for _Outcome valence_ and _Is participant_ and for _Outcome recipient_ and _Is participant_), but the Bayesian tests were inconclusive for both of these effects.
+For two-way interactions, the approaches agree on the presence of an interaction between _Outcome valence_ and _Outcome recipient_. 
+The Bayesian test was inconclusive for the interaction between _Outcome valence_ and whether the rated player _Is the participant_, as well as for the interaction between _Outcome recipient_ and whether the rated player _Is the participant_.
+Both of these interactions were significant on the frequentist analysis. 
 
-The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Vote status_ was significant, but inconclusive. 
 The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Is participant_ was significant but the Bayesian test suggested evidence for a null effect.
-Neither the remaining three-way interactions nor the four-way interaction were significant, and all showed evidence for the null. 
+
+### Vote status factor
+
+We also examine the ANOVA results where _Vote status_ is considered as a factor. 
+Previous experiments have shown that this can matter. 
+Theoretically, this can be important because a player who is outvoted might be seen as less responsible for an outcome.
+Generally, however, this factor is orthogonal to our questions: players are outvoted as often as they are part of the winning vote.
+Note that this factor is encoded only with respect to the participant (we doubt whether participants can remember which players did or did not vote for which outcomes in this design).
+
+* ANOVA:  
+    * _Outcome valence_: Whether the trial result is _Reward_ or _No reward_  
+    * _Outcome recipient_: Whether the rated player is the _Outcome owner_ or _Not outcome owner_  
+    * _Is participant_: Whether the rated player is the _Participant_ or _Another player_  
+    * _Vote status_: Whether the _Participant is in the majority_ or _minority_ in the gamble choice  
+
+```{r}
+
+suppressWarnings({
+  a.full <- ezANOVA(
+    data = d.long,
+    dv = responsibility_rating,
+    wid = subject_id,
+    within = c(
+      outcome,
+      rated_gets_outcome,
+      status,
+      is_participant
+    )
+  )
+})
+
+a.full %>%
+  apa_table()
+
+```
+
+The Bayesian statistics take a long time to run and this analysis is only of secondary interest, so they are not included here. 
+With the additional factor of status (for which the main effect is significant), the effects previously seen in the model remain, including the three-way interaction between _Outcome valence_, _Outcome recipient_, and _Vote status_.
+Additionally, status forms significant two-way interactions with all the other variables except _Outcome valence_.
+There is a three-way interaction of _Vote status_ with the Self/Other-serving bias effect (_Outcome valence_ and _Outcome recipient_), but not with the other variable pairs. 
+The four-way interaction is not significant. 
+This analysis suggests that controlling for participant vote status is not vital to obtaining answers about the performance of participants in this experiment.
+
 
 # Interpretation
 
 Players are considered more responsible if they get the outcome than otherwise.
 The bias towards greater responsibility ratings for Reward as opposed to No reward outcomes appears to be largely confined to the player receiving the outcome.
-Whether the participant's vote is for the decision which gets taken appears to matter more than whether the player rated is the participant or not, at least in terms of the way these factors interact with the valence and recipient of the reward.
-
+This self/other-serving bias is more pronounced as a self-serving bias than an other-serving bias.
 
 # Credits 
 
@@ -628,7 +658,7 @@ out %>% apa_table()
 
 ## Funding
 
-Marwa El Zein is a Sir Henry Wellcome Postdoctoral Fellow at University College London, funded by The Wellcome Trust.
+Marwa El Zein is a Sir Henry Wellcome Postdoctoral Fellow at University College London, funded by The Wellcome Trust (grant number 204702).
 
 Matt Jaquiery is funded by a studentship from the [Medical Research Council](https://mrc.ukri.org/) (reference 1943590) and the University of Oxford [Department of Experimental Psychology](https://www.psy.ox.ac.uk/) (reference 17/18_MSD_661552).
 
