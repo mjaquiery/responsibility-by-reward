@@ -581,6 +581,37 @@ Both of these interactions were significant on the frequentist analysis.
 
 The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Is participant_ was significant but the Bayesian test suggested evidence for a null effect.
 
+### Effect size estimation
+
+```{r}
+
+es <- d.long %>%
+  nest(data = -subject_id) %>%
+  mutate(
+    data = map(data, ~ mutate(., rr.z = scale(responsibility_rating))),
+    m = map(
+      data, 
+      ~ lm(rr.z ~ rated_gets_outcome * outcome * is_participant, data = .)
+    ),
+    coefs = map(m, broom::tidy)
+  ) %>% 
+  unnest(cols = coefs)
+
+es %>% 
+  # filter(term == "rated_gets_outcomeTRUE:outcomeTRUE:is_participantTRUE") %>%
+  ggplot(aes(x = term, y = estimate, colour = p.value < .05)) +
+  geom_hline(yintercept = 0, linetype = 'dashed') +
+  geom_point(position = position_jitter(width = .1)) +
+  stat_summary(geom = "point", fun = mean, shape = 19, size = 2, colour = 'black') +
+  stat_summary(geom = "errorbar", fun.data = mean_cl_normal, width = 0, colour = 'black')
+
+es %>% 
+  filter(term == "rated_gets_outcomeratedGetsOutcome:outcomeNo reward:is_participantratingForParticipant") %>%
+  pull(estimate) %>%
+  t.test(mu = 0)
+
+```
+
 ### Vote status factor
 
 We also examine the ANOVA results where _Vote status_ is considered as a factor. 

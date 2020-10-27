@@ -108,6 +108,8 @@ generateData <- function(
 #' Generate data based on real participants/summary stats.
 #' @param n number of cases to generate
 #' @param betas list of betas to use instead of deriving them in the form \code{list('0' = 0, '2' = 0.3)}
+#' @param betaSDs list of beta distribution SDs if variation around \betas is required
+#' @param path_to_root_dir path to project root for data loading
 #' @details The model used is:
 #'   $$responsibilityRating ~ 
 #'     \beta_1 + 
@@ -119,11 +121,8 @@ generateData <- function(
 #'     \beta_7 outcomeGood:isParticipant + 
 #'     \beta_8 outcomeGood:ratedGetsOutcome:isParticipant$$
 #' The betas correspond to the standardized effect size of each parameter. 
-#' Betas can be specified as functions in which case they will be called with
-#' the number of participant simulated and should return a vector of the same 
-#' length (e.g. the way the \link{stats::rnorm} function works)
 #' 
-generateData.full <- function(n, betas = list(), path_to_root_dir = '') {
+generateData.full <- function(n, betas = list(), betaSDs = NULL, path_to_root_dir = '') {
   # Load data
   d <- read.csv(
     paste0(path_to_root_dir, 'data/dataEXP3.csv'), 
@@ -134,6 +133,9 @@ generateData.full <- function(n, betas = list(), path_to_root_dir = '') {
   
   # Remove testing data
   d <- d %>% filter(prolificid != "", prolificid != "Matt")
+  
+  # Do exclusions we do in the main study
+  d <- generateData.exclude(d)
   
   # Reformat to long
   d <- d %>%
@@ -174,7 +176,12 @@ generateData.full <- function(n, betas = list(), path_to_root_dir = '') {
   
   # Inject specified betas
   for (x in names(betas)) {
-    v <- if (is_function(betas[[x]])) betas[[x]](n) else rep(betas[[x]], n)
+    if (!is.null(betaSDs) & has_name(betaSDs, x)) {
+      v <- rnorm(n, betas[[x]], betaSDs[[x]])
+    } else {
+      v <- rep(betas[[x]], n)
+    }
+      
     for (i in 1:n)
       d$coefs[[i]]$estimate[as.numeric(x)] <- v[i]
   }
@@ -210,4 +217,77 @@ generateData.full <- function(n, betas = list(), path_to_root_dir = '') {
       )
     ) %>% 
     select(-rr_mean, -rr_sd)
+}
+
+#' Exclude participants in the same manner as done in the pilot analysis
+generateData.exclude <- function(d) {
+  
+  max_missed_trials <- 10
+  expected_trial_n <- 72 # 3 sets of 2x12 trials
+  
+  # double_entry
+  exclude_ids <- d %>%
+    nest(d = -prolificid) %>%
+    mutate(
+      d = map(d, ~ filter(., subject_id != subject_id[1]))
+    ) %>%
+    unnest(cols = d) %>%
+    select(subject_id) %>% 
+    unique() %>%
+    mutate(double_entry = T)
+  
+  # max_missed_trials
+  exclude_ids <- full_join(
+    exclude_ids,
+    d %>% 
+      nest(df = -subject_id) %>%
+      mutate(missed_trials = 
+               map_dbl(df, . %>% filter(vote_p1 == "") %>% nrow()),
+             missed_trials = missed_trials >= max_missed_trials) %>%
+      filter(missed_trials) %>%
+      select(-df),
+    by = "subject_id"
+  )
+  
+  # expected_trial_n
+  exclude_ids <- full_join(
+    exclude_ids, 
+    d %>%
+      filter(label == 'scaleresp') %>%
+      nest(df = -subject_id) %>%
+      mutate(df = map_dbl(df, nrow)) %>%
+      filter(df < expected_trial_n) %>%
+      mutate(trial_count = T) %>%
+      select(-df),
+    by = "subject_id"
+  )
+  
+  # We now remove missed trials
+  # Whether we do this BEFORE or AFTER checking consecutive responses matters
+  d <- d %>% filter(vote_p1 != "")
+  
+  # Add block numbers
+  d <- d %>% mutate(bloc = case_when(
+    as.numeric(trial_index) < 12 ~ NA_integer_,
+    as.numeric(trial_index) < 36 ~ 1L,
+    as.numeric(trial_index) < 61 ~ 2L,
+    as.numeric(trial_index) < 87 ~ 3L,
+    T ~ NA_integer_
+  ))
+  
+  # max_consec_resp
+  exclude_ids <- full_join(
+    exclude_ids,
+    d %>% 
+      nest(d = c(-subject_id, -bloc)) %>%
+      mutate(
+        consec_resp = map_lgl(d, ~ all(.$vote_p1 == .$vote_p1[1]))
+      ) %>%
+      filter(consec_resp) %>%
+      select(subject_id, consec_resp) %>%
+      unique(),
+    by = "subject_id"
+  )
+  
+  d %>% filter(!(subject_id %in% exclude_ids$subject_id))
 }
