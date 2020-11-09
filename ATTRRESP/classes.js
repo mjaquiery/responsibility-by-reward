@@ -139,6 +139,7 @@ class Trial extends blueprintObject {
             trial: this,
             data: {
                 trial_number: this.trial,
+                block: this.block,
                 label: this.label
             }
         }];

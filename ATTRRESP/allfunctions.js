@@ -17,6 +17,17 @@ function getExperimentPrematter(shortVersion = false) {
             survey_id,
             survey_trial,
         ];
+    else
+        long = [{
+            type: 'html-button-response',
+            stimulus:`
+<h1> DEMO VERSION </h1>
+<p> This is a demo version of the experiment. You will get fewer blocks and trials than participants in the main experiment. None of your data will be saved, and you will skip the consent form. The demo will take around 5 minutes to complete. </p>
+            `,
+            choices: ['Continue'],
+            post_trial_gap:0,
+            data:{label:'welcome'}
+        }];
 
     return [
         fullscreen,
@@ -362,4 +373,10 @@ function save_data_pt(data, data_table, on_success = null) {
     });
 }
 
-export {getBrowserInfo, generatePlayers, save_data_pt, getExperimentPrematter, getRndInteger, givecond, gamblestim, gambleplay, gambleload, scaleresp, animateGamble};
+function isDemo() {
+    if(!window.hasOwnProperty('demo'))
+        window.isDemo = typeof jsPsych.data.getURLVariable('demo') !== 'undefined';
+    return window.isDemo;
+}
+
+export {getBrowserInfo, generatePlayers, save_data_pt, getExperimentPrematter, getRndInteger, givecond, gamblestim, gambleplay, gambleload, scaleresp, animateGamble, isDemo};

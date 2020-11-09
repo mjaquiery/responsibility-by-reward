@@ -79,7 +79,7 @@
 
 <script type="module">
 
-  import {getBrowserInfo, generatePlayers, getExperimentPrematter, save_data_pt, getRndInteger} from "./allfunctions.js";
+  import {getBrowserInfo, generatePlayers, getExperimentPrematter, save_data_pt, getRndInteger, isDemo} from "./allfunctions.js";
   import {Trial} from "./classes.js"
 
   const browserInfo = getBrowserInfo();
@@ -105,10 +105,11 @@
     /**
      * Build and run the experiment
      */
-    const blockCount = 2;
+    const blockCount = isDemo()? 1 : 2;
     const playerCount = 3; // Number of players including the participant
-    const repetitionsPerBlock = 2;
+    const repetitionsPerBlock = isDemo()? 1 : 2;
     const trialList = threePlayerTrialStructure(repetitionsPerBlock);
+    const demoTrialCount = 3;
     const images = imgcomb();
 
     const players = generatePlayers(playerCount);
@@ -123,7 +124,7 @@
 
     const data_table = "ThreePlayer"; // change this for different experiments
 
-    const task = []//...getExperimentPrematter(true)];
+    const task = [...getExperimentPrematter(isDemo())];
 
     const expStart = {
       type: 'html-button-response',
@@ -146,7 +147,8 @@
         ...trialList[i],
         gamble_images: images[i], // images repeat each block
         players: players,
-        label: 'threePlayerGambleTraining'
+        label: 'threePlayerGambleTraining',
+        block: 'training'
       });
 
       task.push(...trial.toJSPsychPlugins());
@@ -178,8 +180,12 @@
         const trial = new Trial({
           ...trialList[tr],
           gamble_images: images[(bl*20) + tr], // images repeat each block
-          players: players
+          players: players,
+          block: bl
         });
+
+        if(isDemo() && tr >= demoTrialCount)
+          break;
 
         task.push(...trial.toJSPsychPlugins());
         }
@@ -201,8 +207,10 @@
       data:{label:'showsubidEND'}
     };
 
-    task.push(survey_feed)
-    task.push(show)
+    if(!isDemo()) {
+      task.push(survey_feed)
+      task.push(show)
+    }
 
     task.push({
       type: 'fullscreen',
@@ -220,6 +228,8 @@
       show_progress_bar: true,
       preload_images: imageSrcList,
       on_trial_finish: function() {
+        if(isDemo())
+          return;
         var dend = new Date();
         var nend = dend.getTime();
         jsPsych.data.addProperties({datefinish: dend});
@@ -250,6 +260,23 @@
           save_data_pt(data, data_table);
         }
       },
+      on_finish: function() {
+        if(isDemo()) {
+          const thanks = document.createElement('div');
+          thanks.style.textAlign = 'center';
+          thanks.innerHTML = `
+          <h1>Thank you</h1>
+          <p>You have completed the demo version of the experiment. Your data have not been saved to the server. The data which would have been saved throughout the experiment is printed below.</p>
+          <p>Participants in the real experiment perform more blocks, more trials per block, have a free-text debrief screen, receive a payment link at the end, and their data is saved to the server as they progress through the experiment.</p>
+          `;
+          jsPsych.getDisplayContainerElement().insertBefore(
+                  thanks,
+                  jsPsych.getDisplayContainerElement().lastChild
+          );
+
+          jsPsych.data.displayData();
+        }
+      }
     })
 
   }
