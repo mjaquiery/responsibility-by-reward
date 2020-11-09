@@ -123,12 +123,14 @@
   else
   {
 
+    var blockTrialCounts = [3, 3, 3];
+    var playerCount = 5; // Number of players including the participant
 
     var dstart = new Date();
     var nstart = dstart.getTime();
     jsPsych.data.addProperties({date: dstart});
     jsPsych.data.addProperties({time: nstart});
-//check for uniqueness of subject id and add subject id as a property in jspsych
+    //check for uniqueness of subject id and add subject id as a property in jspsych
     var subject_id = Math.floor(Math.random()*9000000) + 1000000 ;
 
     function save_data_pt(data){
@@ -170,65 +172,64 @@
       fullscreen_mode: true
     });
 
-//task.push(welcome());
-//task.push(consentrun());
-//task.push(survey_id);
-//task.push(survey_trial);
-task.push(describe_inst());
+    //task.push(welcome());
+    //task.push(consentrun());
+    //task.push(survey_id);
+    //task.push(survey_trial);
+    task.push(describe_inst());
 
 
     var expstart= {
       type: 'html-button-response',
+      // Only the first blockTrialCounts value gets told to the participant for coding convenience.
       stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Experiment starting </p>'+
-              '<p style="font-size:26px; line-height:1.5 "> You will play 3 blocs of 20 rounds. You can take a break after each bloc.</p>',
+              '<p style="font-size:26px; line-height:1.5 "> You will play '+blockTrialCounts.length+' blocks of '+blockTrialCounts[0]+' rounds. You can take a break after each block.</p>',
       choices: ['Start'],
       post_trial_gap:0,
     };
 
     task.push(expstart);
 
-//returns a random number between min (included) and max (excluded):
-    function getRndInteger2(min, max) {
-      return Math.floor(Math.random() * (max - min) ) + min;
-    }
-
-//returns a random number between min and max (both included):
-    function getRndInteger(min, max) {
+    //returns a random number between min and max (both included):
+    function getRndInteger(min, max, inclusive = true) {
+      if(!inclusive)
+        return Math.floor(Math.random() * (max - min) ) + min;
       return Math.floor(Math.random() * (max - min + 1) ) + min;
     }
 
-    var num1= getRndInteger(10, 99);
-    var num2= getRndInteger(10, 99);
-    var num3= getRndInteger(10, 99);
-    var num4= getRndInteger(10, 99);
+    var playerNumbers = splitDigits();
+    while(playerNumbers.length >= playerCount)
+      playerNumbers.pop();
 
-    while ((num1==num2) || (num1==num3) || (num2==num3) || (num2==num4) || (num3==num4) || (num1==num4))
-    {
-      var num1= getRndInteger(10, 99);
-      var num2= getRndInteger(10, 99);
-      var num3= getRndInteger(10, 99);
-      var num4= getRndInteger(10, 99);
-    }
-
+    // Ensure all players except the participant have numbers
+    if(playerNumbers.length - 1 !== playerCount)
+      console.error('Not all players have a player number.');
 
     var imagestoshow=imgcomb();
 
-    //for(var tr=0; tr<2;tr++){
+    /**
+     * Construct the blocks.
+     * Each block has an introduction and bunch of trials.
+     */
+    for(var bl=0; bl<blockTrialCounts.length;bl++){
 
-    for(var bl=0; bl<3;bl++){
-
-      var blocstart= {
+      var blockstart= {
         type: 'html-button-response',
-        stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Bloc '+(bl+1)+' starting </p>'+
+        stimulus:'<p style="font-size:30px; text-align:center;"> <br> <br> <br> <br> <br> <br> Block '+(bl+1)+' starting </p>'+
                 '<p style="font-size:26px; line-height:1.5 "> Are you ready ?</p>',
         choices: ['Start'],
-        blocstart:0,
+        blockstart:0,
       };
 
-      task.push(blocstart);
+      task.push(blockstart);
 
       var currentlist=trials();
 
+      /**
+       * Construct the trials.
+       * Each trial is built from the currentList, which defines its principle properties:
+       * getsout - which player gets the outcome
+       */
       for(var tr=0; tr<currentlist.length;tr++){
 
         trial=currentlist[tr];
@@ -264,7 +265,7 @@ task.push(describe_inst());
 
         }
 
-        var cond=givecond(num1,num2,num3,num4);
+        var cond=givecond([num1,num2,num3,num4]);
         var stimstep=gamblestim(img1path,img2path);
         var gamblefeed=gambleplay(trial.status,img1path,img2path);
         var outcome = animateGamble(
