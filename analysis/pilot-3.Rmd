@@ -1,5 +1,5 @@
 ---
-title: "Analysis of Experiment 3 data"
+title: "Pilot 3 Analysis"
 author: "Matt Jaquiery"
 date: "21/06/2020"
 output: html_document
@@ -12,8 +12,6 @@ knitr::opts_chunk$set(echo = F)
 ```
 
 ```{r, include=F}
-# library(checkpoint)         # Ensure CRAN packages have the right versions
-# checkpoint('2020-05-08')  # All packages will be loaded as they stood at this date
 library(tidyverse)
 library(ggridges)
 library(ez)
@@ -583,6 +581,8 @@ The three-way interaction between _Outcome valence_, _Outcome recipient_, and _I
 
 ### Effect size estimation
 
+The effect size (and variance) is estimated for the power analysis. 
+
 ```{r}
 
 es <- d.long %>%
@@ -605,10 +605,13 @@ es %>%
   stat_summary(geom = "point", fun = mean, shape = 19, size = 2, colour = 'black') +
   stat_summary(geom = "errorbar", fun.data = mean_cl_normal, width = 0, colour = 'black')
 
-es %>% 
+v <- es %>% 
   filter(term == "rated_gets_outcomeratedGetsOutcome:outcomeNo reward:is_participantratingForParticipant") %>%
-  pull(estimate) %>%
-  t.test(mu = 0)
+  pull(estimate) 
+
+t.test(v, mu = 0)
+paste0('Mean = ', mean(v))
+paste0('SD = ', sd(v))
 
 ```
 
@@ -660,6 +663,29 @@ This analysis suggests that controlling for participant vote status is not vital
 Players are considered more responsible if they get the outcome than otherwise.
 The bias towards greater responsibility ratings for Reward as opposed to No reward outcomes appears to be largely confined to the player receiving the outcome.
 This self/other-serving bias is more pronounced as a self-serving bias than an other-serving bias.
+
+Bayesian stats in this complex setup are difficult to do correctly such that they give reliable and defensible results, and the results are consistent across similar statistical analyses. 
+The frequentist tests are used for the power analysis and will be used for the main experiments.
+
+# References 
+
+Bruce T. Caine  and  Barry  R.  Schlenker. Role  Position and  Group  Performance  as  Determinants  of  Egotistical  Perceptions  in  Cooperative  Groups. The  Journal of  Psychology,   101(2):149–156,   March  1979. ISSN0022-3980. doi: 10.1080/00223980.1979.9915066. URL https://doi.org/10.1080/00223980.1979.9915066.
+
+John  M.  Darley  and  Bibb  Latane.  Bystander  intervention in emergencies:  Diffusion of responsibility. Journal of Personality and Social Psychology, 8(4, Pt.1):377–383,1968. ISSN  1939-1315(Electronic), 0022-3514(Print). doi: 10.1037/h0025589.
+
+Donelson R. Forsyth, Linda E. Zyzniewski, and Cheryl A. Giammanco. Responsibility   Diffusion   in   Cooperative   Collectives. Personality   and   Social   PsychologyBulletin,   28(1):54–65,   January   2002. ISSN   0146-1672. doi:10.1177/0146167202281005.URL https://doi.org/10.1177/0146167202281005.
+
+Donelson   R.   Forsyth   and   Barry   R.   Schlenker. Attributing  the  causes  of  group  performance:   Effects  of performance  quality,  task  importance,  and  future  testing. Journal   of   Personality,   45(2):220–236,   1977. ISSN   1467-6494(Electronic), 0022-3506(Print). doi:10.1111/j.1467-6494.1977.tb00148.x.
+
+Mark R. Leary and Donelson R. Forsyth.   Attributions of responsibility for collective endeavors. In Group processes, Review of personality and social psychology, Vol. 8., pages167–188. Sage Publications, Inc, Thousand Oaks, CA, US,1987. ISBN 978-0-8039-3071-1 978-0-8039-3072-8.
+
+Rowland   S.   Miller   and   Barry   R.   Schlenker. Egotism   in   Group   Members: Public   and   Private   Attributions    of    Responsibility    for    Group    Performance. Social Psychology Quarterly, 48(1):85–89,1985. ISSN   0190-2725.doi:10.2307/3033785. URL https://www.jstor.org/stable/3033785.
+
+Mauricio   Palmeira,    Gerri   Spassova,    and   Hean   TatKeh. Other-serving   bias   in   advice-taking: When advisors   receive   more   credit   than   blame. Organizational Behavior and Human Decision Processes,   130:13–25,   September   2015. ISSN   0749-5978.doi:10.1016/j.obhdp.2015.06.001. URL http://www.sciencedirect.com/science/article/pii/S0749597815000692.
+
+Max  Rollwage,  Franziska  Pannach,  Caedyn  Stinson,  Ulf Toelch, Igor Kagan, and Arezoo Pooresmaeili.  Judgments of effort exerted by others are influenced by received rewards. Scientific Reports, 10(1):1–14, February 2020. ISSN 2045-2322.    doi:   10.1038/s41598-020-58686-0.    URLhttps://www.nature.com/articles/s41598-020-58686-0.
+
+Donald  M.  Taylor  and  Janet  R.  Doria. Self-Serving and  Group-Serving  Bias  in  Attribution. The  Journal  of Social  Psychology,  113(2):201–211,  April  1981. ISSN0022-4545. doi: 10.1080/00224545.1981.9924371. URL https://doi.org/10.1080/00224545.1981.9924371. Publisher: Routledge_eprint: https://doi.org/10.1080/00224545.1981.9924371.
 
 # Credits 
 

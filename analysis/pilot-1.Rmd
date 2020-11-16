@@ -1,7 +1,7 @@
 ---
-title: "Analysis of new data"
+title: "Pilot 1 Analysis"
 author: "Matt Jaquiery"
-date: "27/05/2020"
+date: "08/05/2020"
 output: html_document
 ---
 
@@ -12,8 +12,6 @@ knitr::opts_chunk$set(echo = F)
 ```
 
 ```{r, include=F}
-# library(checkpoint)         # Ensure CRAN packages have the right versions
-# checkpoint('2020-05-08')  # All packages will be loaded as they stood at this date
 library(tidyverse)
 library(ggridges)
 library(ez)
@@ -59,7 +57,6 @@ marginalBF <- function(x, comparisons) {
 }
 ```
 
-
 # Introduction
 
 How we judge our responsibility and the responsibility of others for actions’ outcomes has important consequences in our society. 
@@ -91,10 +88,10 @@ Do they also still exhibit an ‘other-serving’ bias when judging the responsi
 We will also investigate (1b) whether self- and other-serving biases are of similar strength.[^1b]
 
 [^1b]:
-  This is not investigated in Pilot 2 because all responsibility ratings are given for players other than the participant themself.
+  This is not investigated in Pilot 1 because all responsibility ratings are given for the participant themselves.
 
-The study reported here is the second pilot study.
-In this study, participants provided a rating of responsibility for a random player after the outcome of every trial.
+The study reported here is the first pilot study.
+In this study, participants provided a rating of their own responsibility for the outcome on every trial.
 For consistency with other studies in this series, we describe it as having a 2x2x2x1 factor structure, with all factors within-subjects:
 
 * Whether the rated player is the _Outcome recipient_:  
@@ -105,7 +102,7 @@ For consistency with other studies in this series, we describe it as having a 2x
     * _Participant in majority_ versus _Participant in minority_  
 * Whether the _Responsibility judgement_ is made about:  
     * _Own responsibility_ versus _Another's responsibility_  
-    * In this experiment, all _Responsibility judgements_ are made about _Another's responsibility_  
+    * In this experiment all _Responsibility judgements_ are made about the participant's _Own responsibility_  
 
 # Method
 
@@ -149,38 +146,42 @@ Payment follows once all participants have completed the study and bonuses have 
 
 ### Preregistration
 
-Experiment 2 was [preregistered on the Open Science Framework platform (OSF)](https://osf.io/mhsfq).
-The analysis plan deviated from the preregistration in that participants are removed for using the same gamble choice response key on consecutive trials only if they used the same key for all trials in a block (after removing trials with no response).
+Experiment 1 was not preregistered due to a technical glitch with the Open Science Framework platform (OSF).
+The preregistration form was submitted, but it was never processed and added to the repository.
 
 ### Open materials
 
-Materials for the studies can be found on the [GitHub repository](https://github.com/mjaquiery/responsibility-by-reward/tree/841d12c51d00102e13c61829bdbbbdb311e8e715/ATTRRESP/) as it stood on 26th May 2020.
+Materials for the studies can be found on the [GitHub repository](https://github.com/mjaquiery/responsibility-by-reward/tree/d6e65c5f4b62becfa23054c8e124d8916382b446/ATTRRESP) as it stood on 4th May 2020.
 
 ### Open data
 
 We are happy to share the experimental data for these pilot studies on request. 
 Data for the main experiments will available online.
 
+# Results
+
+## Descriptive statistics
 
 ```{r read data}
 
-d <- read.csv('../data/dataEXP2_70part.csv', stringsAsFactors = F) %>% 
-  as_tibble()
+suppressWarnings({
+  x <- read.csv('../data/data50part.csv', stringsAsFactors = F) %>% 
+    mutate_at(vars(c(trialnum, outcome)), as.numeric)
+  y <- read.csv('../data/dataextra.csv', stringsAsFactors = F)
+})
 
-d
+d <- bind_rows(x, y) %>% filter(label == 'scaleresp') %>% as_tibble()
 
 ```
 
 ### Exclusions
 
-
 ```{r exclusions, results = 'asis'}
-
 
 d.old <- d
 
 max_missed_trials <- 10
-expected_trial_n <- 83
+expected_trial_n <- 60
 
 # double_entry
 exclude_ids <- d %>%
@@ -252,20 +253,17 @@ d <- d %>%
     status = factor(status, labels = c('Participant in majority', 
                                        'Participant in minority')),
     outcome = factor(outcome, labels = c('Reward', 'No reward')),
-    getsout = factor(getsout, labels = c('Outcome owner', 'Not outcome owner')),
-    pgetsout = factor(if_else(playeroutnumber == "You", 1, 2), labels = c(
-      'Participant gets outcome', 'Another gets outcome'
-    ))
+    getsout = factor(getsout, labels = c('Outcome owner', 'Not outcome owner'))
   )
-
-# Remove trials where the participant was the rated player
-d.all <- d
-d <- d %>% filter(playeroutnumber != "You")
 
 ```
 
-Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, only used one of the two response keys in a block,[^This exclusion criterion differs from its preregistered form because we inspected the data and judged that participants excluded using the preregistered rule were nevertheless contributing data which looked sensible. Results are highly similar when data are excluded according to the preregistration criterion.] or had fewer than `r expected_trial_n` trials recorded. 
-Our final participant list contains `r length(unique(d$subject_id))` participants.
+Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, picked the gamble option on the same side for all the trials in a block (after removing incomplete responses),[^consec_resp] or fewer than `r expected_trial_n` trials recorded. Our final participant list contains `r length(unique(d$subject_id))` participants.
+
+[^consec_resp]: 
+  _Note_: The criterion for exclusion of participants for consecutive responses was preregistered as 10 consecutive trials with the same gamble response key. 
+  It was not clear in our preregistration planning whether trials with no response should break up consecutive responses for this purpose.
+  After determining that the particular implementation of this exclusion rule did not change the interpretations drawn from the analysis results and that consecutive gamble choice did not seem to be a marker of inattention, we instead adopted the simpler rule that all participants must have used both gamble choice response keys in every block of trials.
 
 ### Demographics 
 
@@ -287,7 +285,6 @@ gender <- d %>%
 age <- d %>% 
   select(prolificid, age) %>% 
   unique()
-
 ```
 
 Participants self-reported a mean age of `r pull(age, age) %>% mean() %>% round(1)` (SD = `r pull(age, age) %>% sd() %>% round(1)`) years and their genders as M (`r gender %>% filter(gender == 'M') %>% nrow()`), F (`r gender %>% filter(gender == 'F') %>% nrow()`), or otherwise (`r gender %>% filter(gender != 'M' & gender != 'F') %>% nrow()`).
@@ -357,7 +354,6 @@ ggplot(tmp, aes(y = Participant, x = Time, fill = Event, colour = Event)) +
 
 ### Feeling of responsibility scale usage
 
-
 This plot shows each participant's use of the responsibility rating scale, i.e. their answers to the question of how responsible they felt on each trial.
 
 ```{r feeling of responsibility visualisations, fig.height=24, fig.width=6}
@@ -365,7 +361,7 @@ This plot shows each participant's use of the responsibility rating scale, i.e. 
 tmp <- d %>%
   mutate(`Trial type` = paste0(
     if_else(status == 'Participant in majority', 'Majority', 'Minority'), ' - ',
-    'rating \'', getsout, '\' ',
+    if_else(getsout == 'Outcome owner', 'gets outcome', 'does not get outcome'), ' ',
     if_else(outcome == 'Reward', '(reward)', '(no reward)')
   ),
     `Trial type` = factor(`Trial type`)) %>%
@@ -386,12 +382,11 @@ ggplot(tmp, aes(x = response, y = factor(subject_id), colour = `Trial type`, fil
     # legend.position = 'right',
     legend.direction = 'vertical'
   ) +
-  labs(x = 'Player responsibility rating', y = 'Participant')
+  labs(x = 'Own responsibility rating', y = 'Participant')
 
 ```
 
 ## Inferential statistics
-
 
 ```{r data preprocessing}
 prettify <- function(d)
@@ -415,7 +410,7 @@ nudge <- function(x, amount, direction = 'outwards') {
 
 ```
 
-### 1) Are players considered more responsible if they are the _Outcome owner_?
+### 1) Do participants feel more responsible if they are the _Outcome owner_?
 
 ```{r effect of getting the outcome}
 dw <- .075
@@ -444,13 +439,13 @@ ggplot(tmp, aes(x = `Outcome recipient`, y = response)) +
   geom_label(x = 1.5, y = 101, label = paste0('BF = ', bf)) +
   scale_x_discrete(expand = c(0, dw * 4)) +
   scale_y_continuous(limits = c(0, 100)) +
-  labs(y = 'Rating of responsibility')
+  labs(y = 'Rating of own responsibility')
 
 ```
-The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
-Participants rate players' responsibility as higher when that player receives the outcome.
+The figure shows participant mean self-responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
+Participants rate their own responsibility as higher when they (rather than another participant) receive the outcome.
 
-### 2) Does the other-serving bias, i.e, higher responsibility for positive _Outcome valence_, change if the rated player is _Not outcome owner_?
+### 2) Does the self-serving bias, i.e, higher responsibility for positive _Outcome valence_, change if the participant is _Not outcome owner_?
 
 ```{r interaction of outcome valence and getting the outcome}
 
@@ -481,16 +476,16 @@ ggplot(tmp, aes(x = `Outcome valence`, y = response)) +
   geom_label(aes(label = paste0('BF = ', bf)), x = 1.5, y = 101, data = bf) +
   scale_x_discrete(expand = c(0, dw * 4)) +
   scale_y_continuous(limits = c(0, 100)) +
-  labs(y = 'Rating of responsibility') +
+  labs(y = 'Rating of own responsibility') +
   facet_wrap(~paste0('When ', `Outcome recipient`))
 
 ```
 
-The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
-The effect of 'other-serving bias' is much clearer on trials where the participant gets the outcome than on trials where another player gets the outcome. 
+The figure shows participant mean self-responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
+The effect of 'self-serving bias' seems more pronounced on trials where the participant gets the outcome than on trials where another player gets the outcome. 
 
-We explored this statistically with a 2x2x2 ANOVA but we did not see the expected interaction between the effects of whether the participant receives the outcome ('getsout') and whether the outcome was good ('outcome'). 
-The Bayesian ANOVa suggested this interaction was sensitively null, in other words it offered evidence against the existence of this interaction.
+
+We explored this statistically with a 2x2x2 ANOVA in which we saw an interaction between the effects of whether the participant receives the outcome ('getsout') and whether the outcome was a Reward ('outcome'). 
 
 ```{r feeling of responsibility plot}
 dw <- .25
@@ -502,7 +497,7 @@ d %>%
   summarise(response = mean(response), .groups = 'drop') %>%
   ggplot(aes(x = `Outcome valence`, 
              y = response, 
-             colour = `Outcome recipient`)) +
+             colour = paste0('When ', `Outcome recipient`))) +
   geom_hline(yintercept = 20, linetype = 'dashed') +
   geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
   stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
@@ -512,12 +507,12 @@ d %>%
   stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`),
                position = position_dodge(dw)) +
   facet_wrap(~`Vote status`) +
-  scale_colour_discrete(name = 'Rated player') +
-  labs(y = "Rating of responsibility")
+  scale_colour_discrete(name = '') +
+  labs(y = "Rating of own responsibility")
 
 ```
 
-The figure shows participant mean self-responsibility ratings collapsed in each trial type (coloured dots). Squares indicate the mean for a trial type across all participant means, with the error bars giving 95% confidence intervals. 
+The figure shows participant mean self-responsibility ratings collapsed in each trial type (coloured dots). Squares indicate the mean for a trial type across all participant means, with the error bars giving 95% confidence intervals.
 
 ```{r ANOVA results, results = 'asis'}
 
@@ -558,107 +553,21 @@ a.bf %>%
   )) %>%
   mutate(` ` = case_when(BF.M1.M2 < 1/3 ~ '-', 
                                    BF.M1.M2 > 3 ~ '+', 
-                                   T ~ '')) %>% 
+                                   T ~ '')) %>%
   apa_table()
 
 ```
 
-The Bayesian and frequentist ANOVAs agree on the presence of an effect of _Outcome valence_ where responsibility ratings are higher for _Reward_ than _No reward_ trials. 
-The Bayesian ANOVA showed an effect of _Outcome recipient_ whereby the _Outcome owner_ received higher responsibility ratings, where no significant effect appeared in the frequentist ANOVA. 
-The Bayesian ANOVA showed all the other effects as sensitive null results, which were consistent with the non-significant frequentist tests. 
-Crucially, these null results include the key interaction between _Outcome valence_ and _Outcome owner_.
-This indicates that the other-serving bias is equivalent whether or not the rated player has received the outcome.
-
-### Participant included data
-
-We may have enough data to explore this with an additional factor: whether the participant was the receiving player.
-We don't place much weight on these analyses because the experiment was not constructed to provide a balanced design: there are for example no trials on which the participant rated their own responsibility but the outcome was given to another player.
-
-```{r}
-dw <- .25
-
-d.all %>%
-  prettify() %>%
-  group_by(subject_id, `Vote status`, `Outcome valence`, `Outcome recipient`, pgetsout) %>% 
-  filter(!is.na(response)) %>%
-  summarise(response = mean(response), .groups = 'drop') %>%
-  ggplot(aes(x = `Outcome valence`, 
-             y = response, 
-             colour = `Outcome recipient`)) +
-  geom_hline(yintercept = 20, linetype = 'dashed') +
-  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
-               fun = mean, position = position_dodge(dw), shape = 0) +
-  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
-               fun.data = mean_cl_normal, position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`),
-               position = position_dodge(dw)) +
-  scale_colour_discrete(name = 'Rated player') +
-  labs(y = "Rating of responsibility") +
-  facet_grid(pgetsout~`Vote status`)
-
-```
-
-```{r results='asis'}
-suppressWarnings({
-  a.full <- ezANOVA(
-    data = d.all,
-    dv = response,
-    wid = subject_id,
-    within = c(
-      outcome,
-      getsout,
-      status,
-      pgetsout
-    )
-  )
-})
-
-
-a.full %>%
-  apa_table()
-
-```
-
-```{r results='asis'}
-
-a.full.bf = anovaBF(
-  data = as.data.frame(d.all),
-  formula = response ~ 
-    outcome + getsout + status + pgetsout + subject_id,
-  whichRandom = 'subject_id', progress = F
-)
-
-a.full.bf %>% 
-  marginalBF(comparisons = list(
-    # 1, 2, 5, # Main effect vs random effects model
-    c(27, 25), c(27, 22), c(27, 26), c(27, 8), # Main effects vs model with other main effects
-    c(14, 27), c(9, 27), c(29, 27), c(53, 27), c(84, 27), c(39, 27), # 2-way interactions vs main effects model
-    c(127, 126), c(156, 126), c(131, 126), c(142, 126), # 3-way interactions vs 2-way interactions model
-    c(166, 165) # 4-way interaction vs 3-way interactions model
-  )) %>%
-  mutate(` ` = case_when(BF.M1.M2 < 1/3 ~ '-', 
-                                   BF.M1.M2 > 3 ~ '+', 
-                                   T ~ '')) %>% 
-  apa_table()
-
-```
-
-Many of the effects of this analysis are significant on the frequentist analysis but unclear or null on the Bayesian analysis. 
-This indicates that the data are not stable across analytical tools which should identify the same patterns, increasing the need for caution in interpretation.
-The effects which are agreed upon by both analyses are the main effects of _Outcome valence_ and _Outcome owner_, the interaction between _Outcome valence_ and whether the _Participant gets the outcome_, and the three-way interaction between the _Outcome valence_, the _Vote status_, and whether the _Participant gets the outcome_.
-All the other significant effects were ruled as null results by the Bayesian ANOVA, specifically the main effect of _Vote status_, the interaction of _Outcome valence_ and _Vote status_, and the interaction of _Vote status_ and whether the _Participant gets the outcome_.
-The remaining effects were sensitively null in the Bayesian analysis, except for the main effect of whether the _Participant gets the outcome_, which was inconclusive.
-
-Notably, the interactions of interest were both sensitively null: the interaction between _Outcome valence_ and _Outcome owner_, and the interaction of these two with whether the _Participant gets the outcome_.
+Participants showed a strong tendency to provide higher ratings for _Reward_ versus _No reward_ outcome valance ($F$(1, 53) = 28.46, $p$ < .001, $\eta_p^2$ = .030) and if they rather than another participant were the _Outcome owner_ ($F$(1, 53) = 15.48, $p$ < .001, $\eta_p^2$ = .017). 
+There was no main effect of whether or not the Vote status put the _Participant in Majority_ ($\text{BF}_{10}$ = 1/25.09).
+Moreover, the increase in ratings for _Rewarded_ vs _No reward_ trials was greater where the participant was the _Outcome owner_ ($F$(1, 53) = 9.46, $p$ < .001, $\eta_p^2$ = .005) or where the Vote status had the _Participant in Majority_ ($F$(1, 53) = 5.29, $p$ = .025, $\eta_p^2$ = .012). 
+The increase in ratings of responsibility for trials on which participant was the _Outcome owner_ was equivalent whether or not the Vote status had the _Participant in Majority_ ($\text{BF}_{10}$ = 1/16.81).
+Finally, there was a three-way interaction: the difference in responsibility for _Reward_ vs _No reward_ trials according to whether the participant was the _Outcome owner_ differed according to the Vote status ($F$(1, 53) = 7.64, $p$ = .001, $\eta_p^2$ = .003), although this was not confirmed by the Bayesian statistics because the result was uninformative (BF = 1.55).
 
 # Interpretation
 
-The effect seen in [Pilot 1](2020-05-08_main-analysis.html), in which participants' feelings of responsibility were increased where the participant received the outcome of the chosen gamble (whether or not the outcome was a reward), were not found when participants rated other players' responsibility rather than their own.
-Similarly, the finding that this increase was greater where the outcome was a reward rather than no reward was also not found where participants rated other players' responsibility.
-
-We aim to condense both experiments into a single, simpler design.
-This design should allow balancing between participants receiving the outcomes and not receiving the outcomes, and allow for comparable ratings of one's own and others' responsibility for decisions.
+Pilot experiment 1 suggested that participants' feelings of responsibility were increased where the participant received the outcome of the chosen gamble (whether or not the outcome was a reward). 
+This increase was greater where the outcome was a reward rather than no reward.
 
 # References
 
