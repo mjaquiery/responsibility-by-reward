@@ -105,7 +105,7 @@ task.push(tasknotcomp)
     /**
      * Build and run the experiment
      */
-    const blockCount = isDemo()? 1 : 2;
+    const blockCount = isDemo()? 1 : 3;
     const playerCount = 3; // Number of players including the participant
     const repetitionsPerBlock = isDemo()? 1 : 2;
     const trialList = threePlayerTrialStructure(repetitionsPerBlock);
@@ -160,7 +160,7 @@ task.push(tasknotcomp)
       type: 'html-button-response',
       stimulus:`
   <p style="font-size:30px; text-align:center;">End of the training. The experiment is now starting. </p>
-  <p style="font-size:26px; line-height:1.5 ">You will play ${blockCount} blocks of ${trialList.length} rounds. You can take a break after each block.</p>
+  <p style="font-size:26px; line-height:1.5 ">You will play ${blockCount} blocks of ${isDemo()? demoTrialCount : trialList.length} rounds. You can take a break after each block.</p>
   `,
       choices: ['Start'],
       post_trial_gap:0,
