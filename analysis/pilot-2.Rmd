@@ -156,13 +156,19 @@ Materials for the studies can be found on the [GitHub repository](https://github
 
 ### Open data
 
-We are happy to share the experimental data for these pilot studies on request. 
-Data for the main experiments will available online.
+Data for this pilot experiment are [available](https://raw.githubusercontent.com/mjaquiery/responsibility-by-reward/master/data/dataEXP2_70part.csv) from GitHub in .csv format.
 
 
 ```{r read data}
+fName <- '../data/dataEXP2_70part.csv'
+if (!file.exists(fName)) 
+  fName <- str_replace(
+    fName, 
+    '../', 
+    'https://raw.githubusercontent.com/mjaquiery/responsibility-by-reward/master/'
+  )
 
-d <- read.csv('../data/dataEXP2_70part.csv', stringsAsFactors = F) %>% 
+d <- read.csv(fName, stringsAsFactors = F) %>% 
   as_tibble()
 
 d
@@ -425,26 +431,30 @@ tmp <- d %>%
   summarise(response = mean(response), .groups = 'drop') %>%
   mutate(`Outcome recipient` = fct_rev(`Outcome recipient`))
 
-bf <- ttestBF(
+tt <- t.test(
   x = tmp$response[tmp$`Outcome recipient` == 'Not outcome owner'],
   y = tmp$response[tmp$`Outcome recipient` != 'Not outcome owner'],
   paired = T
 )
 
-bf <- exp(bf@bayesFactor$bf) %>% round(2)
+tt <- paste0(
+  't(', tt$parameter, ') = ', round(tt$estimate, 2), '\n',
+  'p < ', round(tt$p.value + 1e-3, 3)
+)
 
 ggplot(tmp, aes(x = `Outcome recipient`, y = response)) +
   geom_line(aes(group = subject_id), colour = 'grey') +
   geom_boxplot(outlier.colour = NA, width = dw,
                aes(x = nudge(`Outcome recipient`, dw),
                    group = `Outcome recipient`)) +
-  geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
-  geom_label(x = 1.5, y = 101, label = paste0('BF = ', bf)) +
+  geom_segment(x = 1 - dw, xend = 2 + dw, y = 110, yend = 110) +
+  geom_label(x = 1.5, y = 110, label = tt) +
   scale_x_discrete(expand = c(0, dw * 4)) +
-  scale_y_continuous(limits = c(0, 100)) +
+  scale_y_continuous(limits = c(0, 115), breaks = seq(0, 100, length.out = 5)) +
   labs(y = 'Rating of responsibility')
 
 ```
+
 The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
 Participants rate players' responsibility as higher when that player receives the outcome.
 
@@ -458,15 +468,18 @@ tmp <- d %>%
   filter(!is.na(response)) %>%
   summarise(response = mean(response), .groups = 'drop')
 
-bf <- tmp %>%
+tt <- tmp %>%
   nest(d = -`Outcome recipient`) %>%
   mutate(
-    bf = map(d, ~ ttestBF(
+    tt = map(d, ~ t.test(
       x = .$response[.$`Outcome valence` == 'No reward'],
       y = .$response[.$`Outcome valence` != 'No reward'],
       paired = T
     )),
-    bf = map_dbl(bf, ~ .@bayesFactor %>% .$bf %>% exp() %>% round(2))
+    tt = map_chr(tt, ~ paste0(
+      't(', .$parameter, ') = ', round(.$estimate, 2), '\n',
+      'p < ', round(.$p.value + 1e-3, 3)
+      ))
   ) %>%
   select(-d)
 
@@ -475,10 +488,10 @@ ggplot(tmp, aes(x = `Outcome valence`, y = response)) +
   geom_boxplot(outlier.colour = NA, width = dw,
                aes(x = nudge(`Outcome valence`, dw),
                    group = `Outcome valence`)) +
-  geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
-  geom_label(aes(label = paste0('BF = ', bf)), x = 1.5, y = 101, data = bf) +
+  geom_segment(x = 1 - dw, xend = 2 + dw, y = 110, yend = 110) +
+  geom_label(aes(label = tt), x = 1.5, y = 110, data = tt) +
   scale_x_discrete(expand = c(0, dw * 4)) +
-  scale_y_continuous(limits = c(0, 100)) +
+  scale_y_continuous(limits = c(0, 115), breaks = seq(0, 100, length.out = 5)) +
   labs(y = 'Rating of responsibility') +
   facet_wrap(~paste0('When ', `Outcome recipient`))
 

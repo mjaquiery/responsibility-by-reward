@@ -152,12 +152,18 @@ Materials for the studies can be found on the [GitHub repository](https://github
 
 ### Open data
 
-We are happy to share the experimental data for these pilot studies on request. 
-Data for the main experiments will available online.
+Data for this pilot experiment are [available](https://raw.githubusercontent.com/mjaquiery/responsibility-by-reward/master/data/dataEXP3.csv) on GitHub in .csv format.
 
 ```{r read data}
+fName <- '../data/dataEXP3.csv'
+if (!file.exists(fName)) 
+  fName <- str_replace(
+    fName, 
+    '../', 
+    'https://raw.githubusercontent.com/mjaquiery/responsibility-by-reward/master/'
+  )
 
-d <- read.csv('../data/dataEXP3.csv', sep = ";", stringsAsFactors = F) %>% 
+d <- read.csv(fName, sep = ";", stringsAsFactors = F) %>% 
   as_tibble() 
 
 # Remove testing data
@@ -442,23 +448,26 @@ tmp <- d.long %>%
   group_by(subject_id, `Outcome recipient`) %>%
   summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') 
 
-bf <- ttestBF(
+tt <- t.test(
   x = tmp$responsibility_rating[tmp$`Outcome recipient` == 'Not outcome owner'],
   y = tmp$responsibility_rating[tmp$`Outcome recipient` != 'Not outcome owner'],
   paired = T
 )
 
-bf <- exp(bf@bayesFactor$bf) %>% round(2)
+tt <- paste0(
+  't(', tt$parameter, ') = ', round(tt$estimate, 2), '\n',
+  'p < ', round(tt$p.value + 1e-3, 3)
+)
 
 ggplot(tmp, aes(x = `Outcome recipient`, y = responsibility_rating)) +
   geom_line(aes(group = subject_id), colour = 'grey') +
   geom_boxplot(outlier.colour = NA, width = dw,
                aes(x = nudge(`Outcome recipient`, dw),
                    group = `Outcome recipient`)) +
-  geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
-  geom_label(x = 1.5, y = 101, label = paste0('BF = ', bf)) +
+  geom_segment(x = 1 - dw, xend = 2 + dw, y = 110, yend = 110) +
+  geom_label(x = 1.5, y = 110, label = tt) +
   scale_x_discrete(expand = c(0, dw * 4)) +
-  scale_y_continuous(limits = c(0, 100)) +
+  scale_y_continuous(limits = c(0, 115), breaks = seq(0, 100, length.out = 5)) +
   labs(y = 'Rating of responsibility')
 
 ```
@@ -475,15 +484,18 @@ tmp <- d.long %>%
   summarise(responsibility_rating = mean(responsibility_rating), 
             .groups = 'drop')
 
-bf <- tmp %>%
+tt <- tmp %>%
   nest(d = -`Outcome recipient`) %>%
   mutate(
-    bf = map(d, ~ ttestBF(
+    tt = map(d, ~ t.test(
       x = .$responsibility_rating[.$`Outcome valence` == 'No reward'],
       y = .$responsibility_rating[.$`Outcome valence` != 'No reward'],
       paired = T
     )),
-    bf = map_dbl(bf, ~ .@bayesFactor %>% .$bf %>% exp() %>% round(2))
+    tt = map_chr(tt, ~ paste0(
+      't(', .$parameter, ') = ', round(.$estimate, 2), '\n',
+      'p < ', round(.$p.value + 1e-3, 3)
+      ))
   ) %>%
   select(-d)
 
@@ -492,10 +504,10 @@ ggplot(tmp, aes(x = `Outcome valence`, y = responsibility_rating)) +
   geom_boxplot(outlier.colour = NA, width = dw,
                aes(x = nudge(`Outcome valence`, dw),
                    group = `Outcome valence`)) +
-  geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
-  geom_label(aes(label = paste0('BF = ', bf)), x = 1.5, y = 101, data = bf) +
+  geom_segment(x = 1 - dw, xend = 2 + dw, y = 110, yend = 110) +
+  geom_label(aes(label = tt), x = 1.5, y = 110, data = tt) +
   scale_x_discrete(expand = c(0, dw * 4)) +
-  scale_y_continuous(limits = c(0, 100)) +
+  scale_y_continuous(limits = c(0, 115), breaks = seq(0, 100, length.out = 5)) +
   labs(y = 'Rating of responsibility') +
   facet_wrap(~paste0('When ', `Outcome recipient`))
 
@@ -555,29 +567,22 @@ a %>%
 
 ```
 
-```{r}
+There main effects for _Outcome valence_, and _Outcome recipient_, but the effect of whether the rated player _Is the participant_ is non-significant.
 
-a.bf = anovaBF(
-  data = as.data.frame(d.long),
-  formula = responsibility_rating ~ 
-    outcome * rated_gets_outcome * is_participant * subject_id,
-  whichRandom = 'subject_id', progress = F, whichModels = 'top'
-)
+For two-way interactions, there are interactions between _Outcome valence_ and _Outcome recipient_, between _Outcome valence_ and whether the rated player _Is the participant_, as well as between _Outcome recipient_ and whether the rated player _Is the participant_.
 
-a.bf
+The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Is participant_ was also significant.
 
-plot(a.bf)
+# Interpretation
 
-```
+Players are considered more responsible if they get the outcome than otherwise.
+The bias towards greater responsibility ratings for Reward as opposed to No reward outcomes appears to be largely confined to the player receiving the outcome.
+This self/other-serving bias is more pronounced as a self-serving bias than an other-serving bias.
 
-There are both areas of overlap and areas of disagreement between the Bayesian and frequentist ANOVAs.
-These approaches agree on the presence of main effects for _Outcome valence_, and _Outcome recipient_, but while the Bayesian ANOVA shows evidence of an effect of whether the rated player _Is the participant_, this effect is non-significant.
+Bayesian stats in this complex setup are difficult to do correctly such that they give reliable and defensible results, and the results are consistent across similar statistical analyses (see below). 
+The frequentist tests are used for the power analysis and will be used for the main experiments.
 
-For two-way interactions, the approaches agree on the presence of an interaction between _Outcome valence_ and _Outcome recipient_. 
-The Bayesian test was inconclusive for the interaction between _Outcome valence_ and whether the rated player _Is the participant_, as well as for the interaction between _Outcome recipient_ and whether the rated player _Is the participant_.
-Both of these interactions were significant on the frequentist analysis. 
-
-The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Is participant_ was significant but the Bayesian test suggested evidence for a null effect.
+# Additional analyses
 
 ### Effect size estimation
 
@@ -599,11 +604,22 @@ es <- d.long %>%
 
 es %>% 
   # filter(term == "rated_gets_outcomeTRUE:outcomeTRUE:is_participantTRUE") %>%
+  mutate(
+    term = str_replace_all(
+      term, c(
+        'outcomeNo reward' = 'NoRw',
+        'rated_gets_outcomeratedGetsOutcome' = 'GetsOut',
+        'is_participantratingForParticipant' = 'IsPar'
+      ))
+  ) %>%
   ggplot(aes(x = term, y = estimate, colour = p.value < .05)) +
   geom_hline(yintercept = 0, linetype = 'dashed') +
   geom_point(position = position_jitter(width = .1)) +
   stat_summary(geom = "point", fun = mean, shape = 19, size = 2, colour = 'black') +
-  stat_summary(geom = "errorbar", fun.data = mean_cl_normal, width = 0, colour = 'black')
+  stat_summary(geom = "errorbar", fun.data = mean_cl_normal, width = 0, colour = 'black') +
+  theme(
+    axis.text.x = element_text(angle = 25, hjust = 1)
+  )
 
 v <- es %>% 
   filter(term == "rated_gets_outcomeratedGetsOutcome:outcomeNo reward:is_participantratingForParticipant") %>%
@@ -657,15 +673,88 @@ There is a three-way interaction of _Vote status_ with the Self/Other-serving bi
 The four-way interaction is not significant. 
 This analysis suggests that controlling for participant vote status is not vital to obtaining answers about the performance of participants in this experiment.
 
+### Bayesian analyses (dropped)
 
-# Interpretation
+Bayesian statistics were dropped from this point onwards because multiple different model comparison approaches yeilded results which were very difficult to reconcile. 
+The analysis which is equivalent to that used in pilots 1 and 2 is a model comparison approach where (e.g.) the main effects are tested with a main-effects-only model compared to a model with the target main effect missing.
+There are other approaches, such as comparing a model with only the effect of interest to the intercept-only model (bottom-up) and comparing the full model (with all effects) to a model with effect of interest removed (top-down).
+These approaches give different interpretations of the effects, as shown below.
 
-Players are considered more responsible if they get the outcome than otherwise.
-The bias towards greater responsibility ratings for Reward as opposed to No reward outcomes appears to be largely confined to the player receiving the outcome.
-This self/other-serving bias is more pronounced as a self-serving bias than an other-serving bias.
+#### Peer model comparison
 
-Bayesian stats in this complex setup are difficult to do correctly such that they give reliable and defensible results, and the results are consistent across similar statistical analyses. 
-The frequentist tests are used for the power analysis and will be used for the main experiments.
+In the peer model comparison the effects are determined based on the relative likelihoods of two models.
+The specifics of which models are compared differ for main effects and interactions.  
+
+* Main effects are determined by taking a model with all main effects and comparing it to a model with the main effect of interest removed.  
+
+* Interactions are determined by taking a model with the interaction and comparing it to a model with the main effects and all simpler interactions (no interactions for 2-way interactions, all 2-way interactions for the 3-way interaction).
+
+In all model comparison cases, if the model containing the effect of interest is more likely than the model which does not contain that effect, this is taken as evidence of the effect's explanatory power. 
+If the model with the effect is 3 or more times as likely given the evidence, this is taken as signifying that the effect is significant.
+If the model without the effect is 3 or more times as likely, this is taken as signifying the effect is demonstrably non-significant.
+
+```{r}
+
+a.bf = anovaBF(
+  data = as.data.frame(d.long),
+  formula = responsibility_rating ~ 
+    outcome + rated_gets_outcome + is_participant + subject_id,
+  whichRandom = 'subject_id', progress = F
+)
+a.bf %>% 
+  marginalBF(comparisons = list(
+    # 1, 2, 5, # Main effect vs random effects model
+    c(8, 7), c(8, 6), c(8, 3), # Main effects vs model with other main effects
+    c(9, 8), c(11, 8), c(14, 8), # 2-way interactions vs main effects model
+    c(18, 17)# 3-way interactions vs 2-way interactions model
+  )) %>%
+  mutate(` ` = case_when(BF.M1.M2 < 1/3 ~ '-', 
+                         BF.M1.M2 > 3 ~ '+', 
+                         T ~ '')) %>%
+  apa_table()
+
+```
+
+#### Top-down
+
+The top-down approach compares the full model with all effects to a model with the effect of interest removed.
+
+```{r}
+
+a.bf.td = anovaBF(
+  data = as.data.frame(d.long),
+  formula = responsibility_rating ~ 
+    outcome * rated_gets_outcome * is_participant * subject_id,
+  whichRandom = 'subject_id', progress = F, whichModels = 'top'
+)
+
+a.bf.td
+
+plot(a.bf.td)
+```
+
+#### Bottom-up
+
+The bottom-up approach compares the model with the effect of interest plus the intercept to the intercept-only model.
+
+```{r}
+
+a.bf.bu = anovaBF(
+  data = as.data.frame(d.long),
+  formula = responsibility_rating ~ 
+    outcome * rated_gets_outcome * is_participant * subject_id,
+  whichRandom = 'subject_id', progress = F, whichModels = 'bottom'
+)
+
+a.bf.bu
+
+plot(a.bf.bu)
+```
+
+#### Comparison
+
+While the main effects are present and the three-way interaction not present in all three model comparison approaches, the two-way interactions give different results on different comparison approaches. 
+This instability, as well as the incompatibility with the effect of `is_participant` in the frequentist ANOVA, means that we have decided not to use the Bayesian ANOVA as a key outcome of interest in the main study.
 
 # References 
 
