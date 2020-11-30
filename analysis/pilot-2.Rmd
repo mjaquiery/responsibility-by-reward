@@ -138,7 +138,7 @@ If the participant did select a gamble, the next screen indicates which gamble h
 Next, the gamble is allocated to one of the players and its outcome is shown (a coin for a rewarded trial or a coin with a cross through it for an unrewarded trial).
 
 Finally, the participant is asked to rate their own responsibility for the outcome using a slider.
-The responsibility rating phase lasts until the responsibility ratings has been submitted.
+The responsibility rating phase lasts until the responsibility rating has been submitted.
 
 Once all 60 experimental trials have been completed, participants are debriefed, thanked, and returned to Prolific.
 Payment follows once all participants have completed the study and bonuses have been calculated.
