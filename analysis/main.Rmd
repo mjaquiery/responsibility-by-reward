@@ -77,24 +77,26 @@ The experiment code was written by Marwa El Zein and Matt Jaquiery.
 The entry point to the study is through recruitment on the Prolific (https://prolific.ac/) participant recruitment platform.
 Participants accepting the study are forwarded to the experiment website, where they provide informed consent for participation before entering the main experiment page.
 The experiment begins with detailed instruction pages which describe the structure of each round in the game, with screenshots of each stage, followed by a short training trial sequence.
-Once they have read the instructions and familiarised themselves with the game, participants begin the main experiment, which consists of 3 blocks of 20 trials.
-The 20 trials are a randomised sequence of balanced repetitions of each of the 8 unique trial types (as defined by whether the outcome is a reward/no reward; whether the participant is in the majority/minority; and whether the participant receives the outcome).
-The a reward/no reward trials and the trials with the participant in the majority/minority occurred equally frequently, while the participant received the outcome on 40% of all trials (because we wanted to maximise this variation but felt that 50% of trials might be noticeably unrealistic with four other players in the game).
+Once they have read the instructions and familiarised themselves with the game, participants begin the main experiment, which consists of 3 blocks of 24 trials.
+The 24 trials are a randomised sequence of balanced repetitions of each of the 12 unique trial types (as defined by whether the outcome is a reward/no reward; whether the participant is in the majority/minority; and which the player receives the outcome).
+The a reward/no reward trials and the trials with the participant in the majority/minority occurred equally frequently, and each player receives the outcome on 1/3rd of all trials.
+In trials where the participant is in the majority, one other player selects the same gamble as the participant and the other player selects a random gamble, meaning that on approximately half of these trials the vote is unanimous.
 
-Each trial begins with a display of the five players.
+Each trial begins with a display of the three players.
 This is followed by a screen in which the participant selects one of two gamble images.
 Gamble images are selected from a collection of hand-drawn images of gambling devices and paraphernalia, and are counterbalanced such that each pair of images is shown the same number of times.
 Which gamble is selected has no influence on the outcome of the trial, which is predetermined.
-Once the participant selects a gamble the other option vanishes.
+Once the participant selects a gamble the their player icon is shown on the gamble they chose.
 
 If the participant has not selected a gamble by the end of the choice window, the rest of the trial is cancelled and the participant is shown a warning message which states that they have failed to make a choice in time.
-If the participant did select a gamble, the next screen indicates which gamble has been selected through the majority vote of all five players.
+If the participant did select a gamble, the player icons for the other players are shown on the gambles selected by the other players.
+The gamble with two or more player icons is selected.
 Next, the gamble is allocated to one of the players and its outcome is shown (a coin for a rewarded trial or a coin with a cross through it for an unrewarded trial).
 
-Finally, the participant is asked to rate their own responsibility for the outcome using a slider.
-The responsibility rating phase lasts until the responsibility ratings has been submitted.
+Finally, the participant is asked to rate each player's responsibility for the outcome using a slider.
+The responsibility rating phase lasts until all the responsibility ratings have been submitted.
 
-Once all 60 experimental trials have been completed, participants are debriefed, thanked, and returned to Prolific.
+Once all 72 experimental trials have been completed, participants are debriefed, thanked, and returned to Prolific.
 Payment follows once all participants have completed the study and bonuses have been calculated.
 
 ## Open science
