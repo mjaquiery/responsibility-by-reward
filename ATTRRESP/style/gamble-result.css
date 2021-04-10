@@ -189,6 +189,30 @@ img.gamble-icon.participant-spurned {cursor: not-allowed;}
     justify-content: center;
 }
 
+.player-model {position: relative;}
+.gamble-choice {
+    position: absolute;
+    top: 0;
+    right: 100%;
+    visibility: hidden;
+}
+.gamble-result {
+    position: absolute;
+    top: calc(var(--offset) / 2);
+    right: 100%;
+    visibility: hidden;
+}
+#gamble-result img.summary-icon {
+    height: calc(var(--offset) / 2);
+    width: calc(var(--offset) / 2);
+}
+#gamble-result.ratings .gamble-choice {
+    visibility: visible;
+}
+#gamble-result.ratings .winner .gamble-result {
+    visibility: visible;
+}
+
 .slider {
     visibility: hidden;
     position: absolute;

@@ -110,9 +110,11 @@ jsPsych.plugins["three-player-gamble"] = (function() {
             );
             player.dataset.playerId = p.id;
             player.innerHTML = `
-<div>
+<div class="player-model" data-player-id="${p.id}">
     <img src="img/player-${p.id}.png"/>
     <p>${p.name}</p>
+    <div class="gamble-choice"><img alt="Gamble choice" class="summary-icon"/></div>
+    <div class="gamble-result"><img alt="Gamble result" class="summary-icon"/></div>
 </div>
 `;
         });
@@ -390,6 +392,19 @@ jsPsych.plugins["three-player-gamble"] = (function() {
                 slider.type = "range";
                 slider.value = "50";
                 slider.addEventListener('change', checkRatings);
+            });
+            // Add gamble and outcome reminder icons
+            document.querySelectorAll('.player-model').forEach(e => {
+                if(typeof e.dataset.playerId === 'undefined')
+                    return;
+                const id = parseInt(e.dataset.playerId);
+                const gamble_id = T.gamble_images[T.players[id].vote];
+                const choice_img = e.querySelector('.gamble-choice > img');
+                choice_img.src = `stim/img${gamble_id}.jpg`;
+                if(id === T.getsout) {
+                    const result_img = e.querySelector('.gamble-result > img');
+                    result_img.src = `img/${T.outcome === 1? 'Win' : 'Loss'}.jpg`;
+                }
             });
         }
 
