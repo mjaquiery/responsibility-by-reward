@@ -24,37 +24,6 @@ theme_set(theme_apa() + theme(
   text = element_text(size = 16)
 ))
 
-#' Compare models within a anovaBF output to get relative likelihood
-#' @param x the BFBayesFactor object containing the results
-#' @param comparisons list of pairs of values for the comparisons. Values can be row numbers or model strings.
-#' @return data frame with columns M1, M2, BF(M1,M2)
-marginalBF <- function(x, comparisons) {
-  ns <- rownames(x@bayesFactor)
-  getIndex <- function(i) if (i %in% ns) which(ns == i) else i
-  bf <- function(a, b) exp(a - b)
-  out <- NULL
-  for (comp in comparisons) {
-    if (length(comp) == 1) {
-      a <- getIndex(comp[1])
-      out <- rbind(out, data.frame(
-        M1 = ns[a],
-        M2 = x@denominator@longName,
-        BF.M1.M2 = exp(x@bayesFactor$bf[a])
-      ))
-    } else {
-      a <- getIndex(comp[1]); b <- getIndex(comp[2]);
-      out <- rbind(out, data.frame(
-        M1 = ns[a], 
-        M2 = ns[b],
-        BF.M1.M2 = bf(x@bayesFactor$bf[a], x@bayesFactor$bf[b])
-      ))
-    }
-    
-  }
-  if (!is.null(names(comparisons)))
-    rownames(out) <- names(comparisons)
-  out
-}
 ```
 
 # Introduction
@@ -134,6 +103,7 @@ if (any(d$participant_id != 1, na.rm = T))
 
 d.old <- d
 
+max_rating_time <- 15000 # 15s
 max_missed_trials <- 10
 expected_trial_n <- 72 # 3 sets of 2x12 trials
 
@@ -148,13 +118,17 @@ exclude_ids <- d %>%
   unique() %>%
   mutate(double_entry = T)
 
+# mark trials that take too long as missed
+d <- d %>% 
+  mutate(tooLong = time_ratings_end - time_ratings_start > max_rating_time)
+
 # max_missed_trials
 exclude_ids <- full_join(
   exclude_ids,
   d %>% 
     nest(df = -subject_id) %>%
     mutate(missed_trials = 
-             map_dbl(df, . %>% filter(vote_p1 == "") %>% nrow()),
+             map_dbl(df, . %>% filter(vote_p1 == "" | tooLong) %>% nrow()),
            missed_trials = missed_trials >= max_missed_trials) %>%
     filter(missed_trials) %>%
     select(-df),
@@ -176,7 +150,7 @@ exclude_ids <- full_join(
 
 # We now remove missed trials
 # Whether we do this BEFORE or AFTER checking consecutive responses matters
-d <- d %>% filter(vote_p1 != "")
+d <- d %>% filter(vote_p1 != "" & !tooLong)
 
 # max_consec_resp
 exclude_ids <- full_join(
@@ -216,7 +190,7 @@ d <- d %>%
 
 ```
 
-Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed trials, only used one of the two response keys in a block, or had fewer than `r expected_trial_n` trials recorded. 
+Before exclusion we have `r length(unique(d.old$subject_id))` subject_ids. We now exclude participants who have more than `r max_missed_trials` missed or excessively slow trials, only used one of the two response keys in a block, or had fewer than `r expected_trial_n` trials recorded. 
 Our final participant list contains `r length(unique(d$subject_id))` participants.
 
 ### Demographics 
@@ -331,7 +305,7 @@ ggplot(tmp, aes(x = response, y = factor(subject_id),
 
 ```
 
-## Inferential statistics
+## Main analysis
 
 Participants make one rating of responsibility for each of the three players (including themself) on each trial. 
 These data are averaged in order to conduct ANOVA by organising each rating on each trial according to the following factors:
@@ -381,6 +355,58 @@ d.long <- d %>%
          `Outcome valence` = outcome)
 
 ```
+
+The main analysis is a 2x2x2 frequentist ANOVA.
+
+```{r}
+dw <- .25
+
+d.long %>%
+  group_by(subject_id, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
+  summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') %>%
+  mutate(
+    `Is participant` = if_else(is_participant == "ratingForOther",
+                             "...for Non-participant", 
+                             "...for Participant")
+  ) %>%
+  ggplot(aes(x = `Outcome valence`, y = responsibility_rating, colour = `Outcome recipient`)) +
+  geom_hline(yintercept = 100 / 3, linetype = 'dashed') +
+  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
+  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
+               fun = mean, position = position_dodge(dw), shape = 0) +
+  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
+               fun.data = mean_cl_normal, position = position_dodge(dw)) +
+  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`), 
+               position = position_dodge(dw)) +
+  scale_colour_discrete(h.start = 180) +
+  facet_wrap(~`Is participant`) +
+  labs(x = "Gamble outcome", 
+       y = "Participant rating of responsibility...")
+
+```
+
+```{r}
+
+suppressWarnings({
+  a <- ezANOVA(
+    data = d.long,
+    dv = responsibility_rating,
+    wid = subject_id,
+    within = c(
+      outcome,
+      rated_gets_outcome,
+      is_participant
+    ),
+    type = 3
+  )
+})
+
+a %>%
+  apa_table()
+
+```
+
+## Further inferential statistics
 
 ### 1) Are players considered more responsible if they are the _Outcome owner_?
 
@@ -452,57 +478,6 @@ ggplot(tmp, aes(x = `Outcome valence`, y = responsibility_rating)) +
 
 The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
 The 'self/other-serving bias' is evident on trials where the rated player gets the outcome, but not where another player gets the outcome. 
-
-We explored this statistically with a 2x2x2 ANOVA 
-
-
-```{r}
-dw <- .25
-
-d.long %>%
-  group_by(subject_id, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
-  summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') %>%
-  mutate(
-    `Is participant` = if_else(is_participant == "ratingForOther",
-                             "...for Non-participant", 
-                             "...for Participant")
-  ) %>%
-  ggplot(aes(x = `Outcome valence`, y = responsibility_rating, colour = `Outcome recipient`)) +
-  geom_hline(yintercept = 100 / 3, linetype = 'dashed') +
-  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
-               fun = mean, position = position_dodge(dw), shape = 0) +
-  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
-               fun.data = mean_cl_normal, position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`), 
-               position = position_dodge(dw)) +
-  scale_colour_discrete(h.start = 180) +
-  facet_wrap(~`Is participant`) +
-  labs(x = "Gamble outcome", 
-       y = "Participant rating of responsibility...")
-
-```
-
-```{r}
-
-suppressWarnings({
-  a <- ezANOVA(
-    data = d.long,
-    dv = responsibility_rating,
-    wid = subject_id,
-    within = c(
-      outcome,
-      rated_gets_outcome,
-      is_participant
-    ),
-    type = 3
-  )
-})
-
-a %>%
-  apa_table()
-
-```
 
 # Interpretation
 
