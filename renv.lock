@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.0.2",
+    "Version": "4.0.4",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -573,8 +573,8 @@
       "Package": "papaja",
       "Version": "0.1.0.9997",
       "Source": "GitHub",
-      "Remotes": "tidymodels/broom",
       "RemoteType": "github",
+      "Remotes": "tidymodels/broom",
       "RemoteHost": "api.github.com",
       "RemoteRepo": "papaja",
       "RemoteUsername": "crsh",

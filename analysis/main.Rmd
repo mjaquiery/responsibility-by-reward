@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = F)
 
 ```{r, include=F}
 library(tidyverse)
+library(glue)
 library(ggridges)
 library(ez)
 library(BayesFactor)
@@ -259,12 +260,19 @@ dropped <- tmp %>%
 
 tmp <- tmp %>% filter(Time <= max_rt)
 
-ggplot(tmp, aes(y = Participant, x = Time, fill = Event, colour = Event)) +
+gg <- ggplot(tmp, aes(y = Participant, x = Time, fill = Event, colour = Event)) +
   geom_vline(xintercept = 2000, linetype = 'dashed', colour = 'grey75') +
   geom_density_ridges(alpha = .25) +
-  geom_point(position = position_jitter(0, .05), alpha = .25) +
-  geom_text(aes(label = paste0('... +', dropped$n), y = Participant),
-            inherit.aes = F, x = max_rt, colour = 'grey', data = dropped) +
+  geom_point(position = position_jitter(0, .05), alpha = .25)
+
+if (nrow(dropped)) {
+  gg <- gg + geom_text(
+    aes(label = paste0('... +', n), y = Participant),
+    inherit.aes = F, x = max_rt, colour = 'grey', data = dropped
+  )  
+}
+
+gg + 
   scale_x_continuous(limits = c(0, max_rt)) +
   theme(
     axis.text.y = element_blank(),
@@ -408,6 +416,9 @@ a %>%
 
 ## Further inferential statistics
 
+Below, we unfold the ANOVA results by responding to each of our research questions with a plot.
+For interactions, we conduct additional post-hoc t-tests to better understand the interaction effects.
+
 ### 1) Are players considered more responsible if they are the _Outcome owner_?
 
 ```{r effect of getting the outcome}
@@ -417,13 +428,13 @@ tmp <- d.long %>%
   group_by(subject_id, `Outcome recipient`) %>%
   summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') 
 
-bf <- ttestBF(
+tt <- t.test(
   x = tmp$responsibility_rating[tmp$`Outcome recipient` == 'Not outcome owner'],
   y = tmp$responsibility_rating[tmp$`Outcome recipient` != 'Not outcome owner'],
   paired = T
 )
 
-bf <- exp(bf@bayesFactor$bf) %>% round(2)
+tt <- glue("T({ tt$parameter }) = { round(tt$statistic, 2) }; p = { format(tt$p.value, scientific = T, digits = 2) }")
 
 ggplot(tmp, aes(x = `Outcome recipient`, y = responsibility_rating)) +
   geom_line(aes(group = subject_id), colour = 'grey') +
@@ -431,7 +442,7 @@ ggplot(tmp, aes(x = `Outcome recipient`, y = responsibility_rating)) +
                aes(x = nudge(`Outcome recipient`, dw),
                    group = `Outcome recipient`)) +
   geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
-  geom_label(x = 1.5, y = 101, label = paste0('BF = ', bf)) +
+  geom_label(x = 1.5, y = 101, label = tt) +
   scale_x_discrete(expand = c(0, dw * 4)) +
   scale_y_continuous(limits = c(0, 100)) +
   labs(y = 'Rating of responsibility')
@@ -450,15 +461,15 @@ tmp <- d.long %>%
   summarise(responsibility_rating = mean(responsibility_rating), 
             .groups = 'drop')
 
-bf <- tmp %>%
+tt <- tmp %>%
   nest(d = -`Outcome recipient`) %>%
   mutate(
-    bf = map(d, ~ ttestBF(
+    tt = map(d, ~ t.test(
       x = .$responsibility_rating[.$`Outcome valence` == 'No reward'],
       y = .$responsibility_rating[.$`Outcome valence` != 'No reward'],
       paired = T
     )),
-    bf = map_dbl(bf, ~ .@bayesFactor %>% .$bf %>% exp() %>% round(2))
+    tt = map_chr(tt, ~ glue("T({ .$parameter }) = { round(.$statistic, 2) }; p = { format(.$p.value, scientific = T, digits = 2) }"))
   ) %>%
   select(-d)
 
@@ -468,7 +479,7 @@ ggplot(tmp, aes(x = `Outcome valence`, y = responsibility_rating)) +
                aes(x = nudge(`Outcome valence`, dw),
                    group = `Outcome valence`)) +
   geom_segment(x = 1 - dw, xend = 2 + dw, y = 101, yend = 101) +
-  geom_label(aes(label = paste0('BF = ', bf)), x = 1.5, y = 101, data = bf) +
+  geom_label(aes(label = tt), x = 1.5, y = 101, data = tt) +
   scale_x_discrete(expand = c(0, dw * 4)) +
   scale_y_continuous(limits = c(0, 100)) +
   labs(y = 'Rating of responsibility') +
