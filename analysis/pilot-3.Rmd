@@ -441,6 +441,60 @@ d.long <- d %>%
 
 ```
 
+```{r}
+dw <- .25
+
+d.long %>%
+  group_by(subject_id, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
+  summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') %>%
+  mutate(
+    `Is participant` = if_else(is_participant == "ratingForOther",
+                             "...for Non-participant", 
+                             "...for Participant")
+  ) %>%
+  ggplot(aes(x = `Outcome valence`, y = responsibility_rating, colour = `Outcome recipient`)) +
+  geom_hline(yintercept = 100 / 3, linetype = 'dashed') +
+  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
+  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
+               fun = mean, position = position_dodge(dw), shape = 0) +
+  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
+               fun.data = mean_cl_normal, position = position_dodge(dw)) +
+  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`), 
+               position = position_dodge(dw)) +
+  scale_colour_discrete(h.start = 180) +
+  facet_wrap(~`Is participant`) +
+  labs(x = "Gamble outcome", 
+       y = "Participant rating of responsibility...")
+
+```
+
+```{r}
+
+suppressWarnings({
+  a <- ezANOVA(
+    data = d.long,
+    dv = responsibility_rating,
+    wid = subject_id,
+    within = c(
+      outcome,
+      rated_gets_outcome,
+      is_participant
+    ),
+    type = 3
+  )
+})
+
+a %>%
+  apa_table()
+
+```
+
+There main effects for _Outcome valence_, and _Outcome recipient_, but the effect of whether the rated player _Is the participant_ is non-significant.
+
+For two-way interactions, there are interactions between _Outcome valence_ and _Outcome recipient_, between _Outcome valence_ and whether the rated player _Is the participant_, as well as between _Outcome recipient_ and whether the rated player _Is the participant_.
+
+The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Is participant_ was also significant.
+
 ### 1) Are players considered more responsible if they are the _Outcome owner_?
 
 ```{r effect of getting the outcome}
@@ -517,63 +571,6 @@ ggplot(tmp, aes(x = `Outcome valence`, y = responsibility_rating)) +
 
 The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
 The 'self/other-serving bias' is evident on trials where the rated player gets the outcome, but not where another player gets the outcome. 
-
-We explored this statistically with a 2x2x2 ANOVA 
-
-
-```{r}
-dw <- .25
-
-d.long %>%
-  group_by(subject_id, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
-  summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') %>%
-  mutate(
-    `Is participant` = if_else(is_participant == "ratingForOther",
-                             "...for Non-participant", 
-                             "...for Participant")
-  ) %>%
-  ggplot(aes(x = `Outcome valence`, y = responsibility_rating, colour = `Outcome recipient`)) +
-  geom_hline(yintercept = 100 / 3, linetype = 'dashed') +
-  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
-               fun = mean, position = position_dodge(dw), shape = 0) +
-  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
-               fun.data = mean_cl_normal, position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`), 
-               position = position_dodge(dw)) +
-  scale_colour_discrete(h.start = 180) +
-  facet_wrap(~`Is participant`) +
-  labs(x = "Gamble outcome", 
-       y = "Participant rating of responsibility...")
-
-```
-
-```{r}
-
-suppressWarnings({
-  a <- ezANOVA(
-    data = d.long,
-    dv = responsibility_rating,
-    wid = subject_id,
-    within = c(
-      outcome,
-      rated_gets_outcome,
-      is_participant
-    ),
-    type = 3
-  )
-})
-
-a %>%
-  apa_table()
-
-```
-
-There main effects for _Outcome valence_, and _Outcome recipient_, but the effect of whether the rated player _Is the participant_ is non-significant.
-
-For two-way interactions, there are interactions between _Outcome valence_ and _Outcome recipient_, between _Outcome valence_ and whether the rated player _Is the participant_, as well as between _Outcome recipient_ and whether the rated player _Is the participant_.
-
-The three-way interaction between _Outcome valence_, _Outcome recipient_, and _Is participant_ was also significant.
 
 # Interpretation
 
@@ -677,7 +674,7 @@ This analysis suggests that controlling for participant vote status is not vital
 
 ### Bayesian analyses (dropped)
 
-Bayesian statistics were dropped from this point onwards because multiple different model comparison approaches yeilded results which were very difficult to reconcile. 
+Bayesian statistics were dropped from this point onwards because multiple different model comparison approaches yielded results which were very difficult to reconcile. 
 The analysis which is equivalent to that used in pilots 1 and 2 is a model comparison approach where (e.g.) the main effects are tested with a main-effects-only model compared to a model with the target main effect missing.
 There are other approaches, such as comparing a model with only the effect of interest to the intercept-only model (bottom-up) and comparing the full model (with all effects) to a model with effect of interest removed (top-down).
 These approaches give different interpretations of the effects, as shown below.

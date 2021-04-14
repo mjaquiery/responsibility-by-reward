@@ -396,7 +396,6 @@ ggplot(tmp, aes(x = response, y = factor(subject_id), colour = `Trial type`, fil
 
 ## Inferential statistics
 
-
 ```{r data preprocessing}
 prettify <- function(d)
   d %>%
@@ -418,6 +417,60 @@ nudge <- function(x, amount, direction = 'outwards') {
 }
 
 ```
+
+The key analysis is a 2x2x2 ANOVA. 
+
+```{r feeling of responsibility plot}
+dw <- .25
+
+d %>%
+  prettify() %>%
+  group_by(subject_id, `Vote status`, `Outcome valence`, `Outcome recipient`) %>% 
+  filter(!is.na(response)) %>%
+  summarise(response = mean(response), .groups = 'drop') %>%
+  ggplot(aes(x = `Outcome valence`, 
+             y = response, 
+             colour = `Outcome recipient`)) +
+  geom_hline(yintercept = 20, linetype = 'dashed') +
+  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
+  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
+               fun = mean, position = position_dodge(dw), shape = 0) +
+  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
+               fun.data = mean_cl_normal, position = position_dodge(dw)) +
+  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`),
+               position = position_dodge(dw)) +
+  facet_wrap(~`Vote status`) +
+  scale_colour_discrete(name = 'Rated player') +
+  labs(y = "Rating of responsibility")
+
+```
+
+The figure shows participant mean self-responsibility ratings collapsed in each trial type (coloured dots). Squares indicate the mean for a trial type across all participant means, with the error bars giving 95% confidence intervals. 
+
+```{r ANOVA results, results = 'asis'}
+
+suppressWarnings({
+  a <- ezANOVA(
+    data = d,
+    dv = response,
+    wid = subject_id,
+    within = c(
+      outcome,
+      getsout,
+      status
+    )
+  )
+})
+
+
+a %>%
+  apa_table()
+
+```
+
+We did not see the expected interaction between the effects of whether the participant receives the outcome ('getsout') and whether the outcome was good ('outcome'). 
+
+Below we unfold these results with a plot for each hypothesis.
 
 ### 1) Are players considered more responsible if they are the _Outcome owner_?
 
@@ -500,56 +553,10 @@ ggplot(tmp, aes(x = `Outcome valence`, y = response)) +
 The figure shows participant mean responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
 The effect of 'other-serving bias' is much clearer on trials where the participant gets the outcome than on trials where another player gets the outcome. 
 
-We explored this statistically with a 2x2x2 ANOVA but we did not see the expected interaction between the effects of whether the participant receives the outcome ('getsout') and whether the outcome was good ('outcome'). 
-The Bayesian ANOVa suggested this interaction was sensitively null, in other words it offered evidence against the existence of this interaction.
+## Bayesian ANOVA
 
-```{r feeling of responsibility plot}
-dw <- .25
-
-d %>%
-  prettify() %>%
-  group_by(subject_id, `Vote status`, `Outcome valence`, `Outcome recipient`) %>% 
-  filter(!is.na(response)) %>%
-  summarise(response = mean(response), .groups = 'drop') %>%
-  ggplot(aes(x = `Outcome valence`, 
-             y = response, 
-             colour = `Outcome recipient`)) +
-  geom_hline(yintercept = 20, linetype = 'dashed') +
-  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
-               fun = mean, position = position_dodge(dw), shape = 0) +
-  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
-               fun.data = mean_cl_normal, position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`),
-               position = position_dodge(dw)) +
-  facet_wrap(~`Vote status`) +
-  scale_colour_discrete(name = 'Rated player') +
-  labs(y = "Rating of responsibility")
-
-```
-
-The figure shows participant mean self-responsibility ratings collapsed in each trial type (coloured dots). Squares indicate the mean for a trial type across all participant means, with the error bars giving 95% confidence intervals. 
-
-```{r ANOVA results, results = 'asis'}
-
-suppressWarnings({
-  a <- ezANOVA(
-    data = d,
-    dv = response,
-    wid = subject_id,
-    within = c(
-      outcome,
-      getsout,
-      status
-    )
-  )
-})
-
-
-a %>%
-  apa_table()
-
-```
+Bayesian ANOVA formed part of our original plans, but we have sidelined it because we found the frequentist version to be more interpretable in our final experimental design. 
+It is included here for transparency.
 
 ```{r Bayesian ANOVA results, results = 'asis'}
 

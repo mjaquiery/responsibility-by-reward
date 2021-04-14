@@ -420,6 +420,65 @@ nudge <- function(x, amount, direction = 'outwards') {
 
 ```
 
+The key analysis is an ANOVA exploring the effects of who gets the trial outcome and what that outcome is (and also whether the participant votes with the majority). 
+The dependent variable is the participant's rating of their own responsibility for the decision.
+
+```{r ANOVA results, results = 'asis'}
+
+suppressWarnings({
+  a <- ezANOVA(
+    data = d,
+    dv = response,
+    wid = subject_id,
+    within = c(
+      outcome,
+      getsout,
+      status
+    )
+  )
+})
+
+
+a %>%
+  apa_table()
+
+```
+
+```{r feeling of responsibility plot}
+dw <- .25
+
+d %>%
+  prettify() %>%
+  group_by(subject_id, `Vote status`, `Outcome valence`, `Outcome recipient`) %>% 
+  filter(!is.na(response)) %>%
+  summarise(response = mean(response), .groups = 'drop') %>%
+  ggplot(aes(x = `Outcome valence`, 
+             y = response, 
+             colour = paste0('When ', `Outcome recipient`))) +
+  geom_hline(yintercept = 20, linetype = 'dashed') +
+  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
+  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
+               fun = mean, position = position_dodge(dw), shape = 0) +
+  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
+               fun.data = mean_cl_normal, position = position_dodge(dw)) +
+  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`),
+               position = position_dodge(dw)) +
+  facet_wrap(~`Vote status`) +
+  scale_colour_discrete(name = '') +
+  labs(y = "Rating of own responsibility")
+
+```
+
+The figure shows participant mean self-responsibility ratings collapsed in each trial type (coloured dots). Squares indicate the mean for a trial type across all participant means, with the error bars giving 95% confidence intervals.
+
+Participants showed a strong tendency to provide higher ratings for _Reward_ versus _No reward_ outcome valance ($F$(1, 53) = 28.46, $p$ < .001, $\eta_p^2$ = .030) and if they rather than another participant were the _Outcome owner_ ($F$(1, 53) = 15.48, $p$ < .001, $\eta_p^2$ = .017). 
+There was no significant main effect of whether or not the Vote status put the _Participant in Majority_).
+Moreover, the increase in ratings for _Rewarded_ vs _No reward_ trials was greater where the participant was the _Outcome owner_ ($F$(1, 53) = 9.46, $p$ < .001, $\eta_p^2$ = .005) or where the Vote status had the _Participant in Majority_ ($F$(1, 53) = 5.29, $p$ = .025, $\eta_p^2$ = .012). 
+The increase in ratings of responsibility for trials on which participant was the _Outcome owner_ was equivalent whether or not the Vote status had the _Participant in Majority_.
+Finally, there was a three-way interaction: the difference in responsibility for _Reward_ vs _No reward_ trials according to whether the participant was the _Outcome owner_ differed according to the Vote status ($F$(1, 53) = 7.64, $p$ = .001, $\eta_p^2$ = .003).
+
+Below we unfold these results with a plot for each hypothesis.
+
 ### 1) Do participants feel more responsible if they are the _Outcome owner_?
 
 ```{r effect of getting the outcome}
@@ -501,56 +560,10 @@ ggplot(tmp, aes(x = `Outcome valence`, y = response)) +
 The figure shows participant mean self-responsibility ratings collapsed across other trial factors (lines) and their distributions (box plots).
 The effect of 'self-serving bias' seems more pronounced on trials where the participant gets the outcome than on trials where another player gets the outcome. 
 
+## Bayesian ANOVA
 
-We explored this statistically with a 2x2x2 ANOVA in which we saw an interaction between the effects of whether the participant receives the outcome ('getsout') and whether the outcome was a Reward ('outcome'). 
-
-```{r feeling of responsibility plot}
-dw <- .25
-
-d %>%
-  prettify() %>%
-  group_by(subject_id, `Vote status`, `Outcome valence`, `Outcome recipient`) %>% 
-  filter(!is.na(response)) %>%
-  summarise(response = mean(response), .groups = 'drop') %>%
-  ggplot(aes(x = `Outcome valence`, 
-             y = response, 
-             colour = paste0('When ', `Outcome recipient`))) +
-  geom_hline(yintercept = 20, linetype = 'dashed') +
-  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
-               fun = mean, position = position_dodge(dw), shape = 0) +
-  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
-               fun.data = mean_cl_normal, position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`),
-               position = position_dodge(dw)) +
-  facet_wrap(~`Vote status`) +
-  scale_colour_discrete(name = '') +
-  labs(y = "Rating of own responsibility")
-
-```
-
-The figure shows participant mean self-responsibility ratings collapsed in each trial type (coloured dots). Squares indicate the mean for a trial type across all participant means, with the error bars giving 95% confidence intervals.
-
-```{r ANOVA results, results = 'asis'}
-
-suppressWarnings({
-  a <- ezANOVA(
-    data = d,
-    dv = response,
-    wid = subject_id,
-    within = c(
-      outcome,
-      getsout,
-      status
-    )
-  )
-})
-
-
-a %>%
-  apa_table()
-
-```
+Bayesian ANOVA formed part of our original plans, but we have sidelined it because we found the frequentist version to be more interpretable in our final experimental design. 
+It is included here for transparency.
 
 ```{r Bayesian ANOVA results, results = 'asis'}
 
@@ -574,12 +587,6 @@ a.bf %>%
   apa_table()
 
 ```
-
-Participants showed a strong tendency to provide higher ratings for _Reward_ versus _No reward_ outcome valance ($F$(1, 53) = 28.46, $p$ < .001, $\eta_p^2$ = .030) and if they rather than another participant were the _Outcome owner_ ($F$(1, 53) = 15.48, $p$ < .001, $\eta_p^2$ = .017). 
-There was no main effect of whether or not the Vote status put the _Participant in Majority_ ($\text{BF}_{10}$ = 1/25.09).
-Moreover, the increase in ratings for _Rewarded_ vs _No reward_ trials was greater where the participant was the _Outcome owner_ ($F$(1, 53) = 9.46, $p$ < .001, $\eta_p^2$ = .005) or where the Vote status had the _Participant in Majority_ ($F$(1, 53) = 5.29, $p$ = .025, $\eta_p^2$ = .012). 
-The increase in ratings of responsibility for trials on which participant was the _Outcome owner_ was equivalent whether or not the Vote status had the _Participant in Majority_ ($\text{BF}_{10}$ = 1/16.81).
-Finally, there was a three-way interaction: the difference in responsibility for _Reward_ vs _No reward_ trials according to whether the participant was the _Outcome owner_ differed according to the Vote status ($F$(1, 53) = 7.64, $p$ = .001, $\eta_p^2$ = .003), although this was not confirmed by the Bayesian statistics because the result was uninformative (BF = 1.55).
 
 # Interpretation
 
