@@ -73,18 +73,18 @@ const consent = {
 
 const instruct = {
     type:"instructions",
-    pages:['<p style="font-size:24px; line-height:1.5"> In In In In below this group decision-making experiment, on each round, you have to choose between two gambles '+
+    pages:['<p style="font-size:24px; line-height:1.5"> In this group decision-making experiment, on each round, you have to choose between two gambles '+
     ' that will be depicted as images of real-life gambles such as the example below </p> <img src="img/examplepress.jpg">'+
     '<p style="font-size:24px; line-height:1.5"> You will have to decide which gamble to choose by pressing on the left or right gamble.'+
     ' The images will only appear for 2 seconds, and you only have 2 seconds to make your choice.'+
     ' Each gamble has different probabilities of winning and losing. <b> Your aim is to find which gambles are likely to'+
-    ' make you win and choose them. <b> Please be aware that there is no link beween the type of image depicted (roulettes, dice, cards) and the actual probablity to win. </p>',
+    ' make you win and choose them.</p>',
 
         "<p style='font-size:24px; line-height:1.5'> You will play as a group with 2 other players."+
         "<div style='float: center;'><img src='img/Group_S.jpg'></img> "+
         "<p style='font-size:24px; line-height:1.5'> This means that the chosen gamble will depend on a majority rule based on your choice and the choices of 2 other participants: the gamble chosen by 2 players or more will be picked."+
-        " For example, if you and 1 other player choose the left Gamble on a given round, than the left Gamble will be picked. "+"2 players among 100 previous players will be randomly picked at the beginning of the experiment to play with you."+
-        "The choices for the majority rule correspond to choices of these 2 players throughout the experiment.</p> ",
+        " For example, if you and 1 other player choose the left Gamble on a given round, then the left Gamble will be picked. "+"2 players among 100 previous players will be randomly picked at the beginning of the experiment to play with you."+
+        " The choices for the majority rule correspond to the choices of these 2 players throughout the experiment.</p> ",
 
         "<p style='font-size:24px; line-height:1.5'> Before you see the outcome of the gamble, you will be shown which gamble was actually played, such as below </p> "+
         "<div style='float: center;'><img src='img/Picture2.png'></img> "+
@@ -94,13 +94,13 @@ const instruct = {
         " You will be shown which member of the group will receive the outcome as depicted on the picture below, with an example of a round where YOU received a positive outcome, and an example of a round where PLAYER 06 received a negative outcome </p>"+
         "<div style='float: center;'><img src='img/outcomeill2.jpg'></img> ",
 
-        "<p style='font-size:24px; line-height:1.5'>  <br> If the gamble chosen by your group results in a positive outcome, you or a member of your group receive(s) 1 point of bonus.</p>"
+        "<p style='font-size:24px; line-height:1.5'>  <br> If the gamble chosen by your group results in a positive outcome, you or a member of your group receive(s) 1  bonus point.</p>"
         + "<div style='float: center;'><img src='img/Win.jpg'></img> "+
         "<p style='font-size:24px; line-height:1.5'> If the gamble chosen by your group results in a negative outcome, you or a member of your group get(s) no bonus."+
         "  If you don't give a choice fast enough on a given round, it counts as a round where YOU get no bonus (the round continues for the group but you are excluded from that round).</p>" +
         "<div style='float: center;'><img src='img/Loss.jpg'></img> ",
 
-        "<p style='font-size:24px; line-height:1.5'> At each round, you will have to complete a rating about your responsiblity and the responsibility of the other group members over the current round's outcome."+
+        "<p style='font-size:24px; line-height:1.5'> At each round, you will have to complete a rating about your responsibility and the responsibility of the other group members over the current round's outcome."+
         "This will be shown to you just after the outcome. Hover over each player to see the responsibility scale and move the cursor on the scale to make your rating."+
         "<div style='float: center;'><img src='img/instscale2.png'></img> ",
 
