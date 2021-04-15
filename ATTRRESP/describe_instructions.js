@@ -24,7 +24,7 @@ const welcome_block = {
     '<p>Contact details of investigator:</p>'+
     '<p>Marwa El Zein</p>'+
     '<p>Institute of Cognitive Neuroscience, 17 Queen Square, London WC1N 3AR</p>'+
-    '<p>m.zein@ucl.ac.uk</p>'+
+    '<p>m.zein@ucl.ac.uk AAA</p>'+
     '<p>We would like to invite you to participate in this experiment. It is up to you to decide whether or not to take part in the experiment.'+
     ' Choosing not to take part will not disadvantage you in any way. You can withdraw at any time during the experiment.</p>'+
     ' <br> Please take time to read the following information carefully and discuss it with others if you wish. Ask us if there is anything that is not clear or if you would like to have more information. Take time to decide whether or not you wish to take part. Thank you for reading this.</p>'+
