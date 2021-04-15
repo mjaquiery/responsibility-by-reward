@@ -73,7 +73,7 @@ const consent = {
 
 const instruct = {
     type:"instructions",
-    pages:['<p style="font-size:24px; line-height:1.5"> In this group decision-making experiment, on each round, you have to choose between two gambles '+
+    pages:['<p style="font-size:24px; line-height:1.5"> In In In In this group decision-making experiment, on each round, you have to choose between two gambles '+
     ' that will be depicted as images of real-life gambles such as the example below </p> <img src="img/examplepress.jpg">'+
     '<p style="font-size:24px; line-height:1.5"> You will have to decide which gamble to choose by pressing on the left or right gamble.'+
     ' The images will only appear for 2 seconds, and you only have 2 seconds to make your choice.'+
