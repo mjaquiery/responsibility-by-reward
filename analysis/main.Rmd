@@ -14,16 +14,21 @@ knitr::opts_chunk$set(echo = F)
 ```{r, include=F}
 library(tidyverse)
 library(glue)
+library(lubridate)
 library(ggridges)
 library(ez)
 library(BayesFactor)
-library(papaja)
+# library(papaja)
 
-theme_set(theme_apa() + theme(
-  panel.grid = element_blank(),
-  legend.position = 'top',
-  text = element_text(size = 16)
-))
+theme_set( 
+  theme_light() #+
+    # theme_apa() +
+    # theme(
+    #   panel.grid = element_blank(),
+    #   legend.position = 'top',
+    #   text = element_text(size = 16)
+    # )
+)
 
 ```
 
@@ -85,11 +90,12 @@ Materials for the studies can be found on the [GitHub repository](https://github
 
 ```{r read data}
 
-d <- read.csv('', sep = ";", stringsAsFactors = F) %>% 
-  as_tibble() 
-
-# Remove testing data
-d <- d %>% filter(prolificid != "", prolificid != "Matt")
+d <- read.csv('../data/finaldata.csv', sep = ",", stringsAsFactors = F) %>% 
+  as_tibble() %>%
+  bind_rows(
+    read.csv('../data/finaldata2.csv', sep = ",", stringsAsFactors = F) %>%
+      as_tibble()
+  )
 
 d
 
@@ -107,17 +113,19 @@ d.old <- d
 max_rating_time <- 15000 # 15s
 max_missed_trials <- 10
 expected_trial_n <- 72 # 3 sets of 2x12 trials
+n_participants <- 500
 
-# double_entry
-exclude_ids <- d %>%
-  nest(d = -prolificid) %>%
-  mutate(
-    d = map(d, ~ filter(., subject_id != subject_id[1]))
-  ) %>%
-  unnest(cols = d) %>%
-  select(subject_id) %>% 
-  unique() %>%
-  mutate(double_entry = T)
+# # double_entry -- taken care of by Prolific
+# exclude_ids <- d %>%
+#   nest(d = -prolificid) %>%
+#   mutate(
+#     d = map(d, ~ filter(., subject_id != subject_id[1]))
+#   ) %>%
+#   unnest(cols = d) %>%
+#   select(subject_id) %>% 
+#   unique() %>%
+#   mutate(double_entry = T)
+exclude_ids <- tribble(~ subject_id)
 
 # mark trials that take too long as missed
 d <- d %>% 
@@ -140,7 +148,7 @@ exclude_ids <- full_join(
 exclude_ids <- full_join(
   exclude_ids, 
   d %>%
-    filter(label == 'scaleresp') %>%
+    filter(label == 'threePlayerGamble') %>%
     nest(df = -subject_id) %>%
     mutate(df = map_dbl(df, nrow)) %>%
     filter(df < expected_trial_n) %>%
@@ -157,7 +165,7 @@ d <- d %>% filter(vote_p1 != "" & !tooLong)
 exclude_ids <- full_join(
   exclude_ids,
   d %>% 
-    nest(d = c(-subject_id, -bloc)) %>%
+    nest(d = c(-subject_id, -block)) %>%
     mutate(
       consec_resp = map_lgl(d, ~ all(.$vote_p1 == .$vote_p1[1]))
     ) %>%
@@ -167,14 +175,27 @@ exclude_ids <- full_join(
   by = "subject_id"
 )
 
+exclude_ids <- full_join(
+  exclude_ids,
+  d %>% 
+    filter(!(subject_id %in% exclude_ids$subject_id)) %>%
+    nest(d = -subject_id) %>%
+    mutate(first = map_dbl(d, ~ min(as_datetime(.$date)))) %>%
+    arrange(first) %>%
+    rowid_to_column() %>%
+    filter(rowid > n_participants) %>%
+    transmute(subject_id, surplus_to_prereg = T),
+  by = "subject_id"
+)
+
 exclude_ids %>% 
   mutate(total_unique_exclusions = 1) %>% 
   select(everything(), total_unique_exclusions, -subject_id) %>% 
   summarise_all(sum, na.rm = T) %>% 
   pivot_longer(cols = everything(), 
                names_to = 'Reason', 
-               values_to = 'N excluded') %>%
-  apa_table()
+               values_to = 'N excluded') 
+  # apa_table()
 
 d <- d %>% 
   filter(!(subject_id %in% exclude_ids$subject_id)) %>% 
@@ -203,12 +224,12 @@ d %>%
   unique()
 
 gender <- d %>% 
-  select(prolificid, gender) %>% 
+  select(subject_id, gender) %>% 
   mutate(gender = str_to_upper(gender)) %>% 
   unique()
 
 age <- d %>% 
-  select(prolificid, age) %>% 
+  select(subject_id, age) %>% 
   mutate(age = as.numeric(age)) %>%
   unique()
 
@@ -220,12 +241,12 @@ Data were collected on the following days:
 
 ```{r experiment dates, results = 'asis'}
 d %>%
-  select(subject_id, date) %>%
+  transmute(subject_id, date = as_date(date)) %>%
   unique() %>%
   group_by(date) %>%
   summarise(n = n(), .groups = 'drop') %>%
-  rename(Date = date, Participants = n) %>%
-  apa_table()
+  rename(Date = date, Participants = n) #%>%
+  # apa_table()
 
 ```
 
@@ -409,8 +430,8 @@ suppressWarnings({
   )
 })
 
-a %>%
-  apa_table()
+a # %>%
+  # apa_table()
 
 ```
 
@@ -517,7 +538,7 @@ for (p in packageNames) {
                                                    collapse = '<br/><br/>')))
 }
 
-out %>% apa_table()
+out # %>% apa_table()
 ```
 
 ## Funding
