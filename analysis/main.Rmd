@@ -97,6 +97,8 @@ d <- read.csv('../data/finaldata.csv', sep = ",", stringsAsFactors = F) %>%
       as_tibble()
   )
 
+write.csv(d, '../data/main-data_raw.csv', row.names = F)
+
 d
 
 if (any(d$participant_id != 1, na.rm = T))
@@ -383,34 +385,43 @@ d.long <- d %>%
          ),
          `Outcome valence` = outcome)
 
+write.csv(d.long, '../data/main-data_processed.csv', row.names = F)
+
 ```
 
 The main analysis is a 2x2x2 frequentist ANOVA.
 
 ```{r}
-dw <- .25
+
+dw <- 1
 
 d.long %>%
   group_by(subject_id, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
   summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') %>%
   mutate(
-    `Is participant` = if_else(is_participant == "ratingForOther",
-                             "...for Non-participant", 
-                             "...for Participant")
+    `Is participant` = if_else(is_participant == "ratingForOther", "Other", "Self")
   ) %>%
-  ggplot(aes(x = `Outcome valence`, y = responsibility_rating, colour = `Outcome recipient`)) +
+  mutate(
+    `Outcome recipient` = fct_rev(`Outcome recipient`),
+    `Is participant` = fct_rev(`Is participant`)
+  ) %>%
+  ggplot(aes(x = `Is participant`, y = responsibility_rating, colour = `Outcome valence`)) +
   geom_hline(yintercept = 100 / 3, linetype = 'dashed') +
-  geom_point(alpha = .1, position = position_jitterdodge(dw/1.5, dodge.width = dw)) +
-  stat_summary(geom = "point", aes(group = `Outcome recipient`), size = 4, 
-               fun = mean, position = position_dodge(dw), shape = 0) +
-  stat_summary(geom = "errorbar", aes(group = `Outcome recipient`), width = 0, 
-               fun.data = mean_cl_normal, position = position_dodge(dw)) +
-  stat_summary(geom = 'line', fun = mean, aes(group = `Outcome recipient`), 
-               position = position_dodge(dw)) +
+  geom_point(alpha = .1, position = position_jitterdodge(dw/3, dodge.width = dw)) +
+  stat_summary(geom = "col", aes(group = `Outcome valence`), fill = NA, size = 1, 
+               fun = mean, position = position_dodge(dw)) +
+  stat_summary(geom = "errorbar", aes(group = `Outcome valence`), width = 0, 
+               fun.data = mean_cl_normal, position = position_dodge(dw), size = 2.5) +
   scale_colour_discrete(h.start = 180) +
-  facet_wrap(~`Is participant`) +
-  labs(x = "Gamble outcome", 
-       y = "Participant rating of responsibility...")
+  scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
+  facet_wrap(~`Outcome recipient`) +
+  labs(x = "", 
+       y = "Participant rating of responsibility") +
+  theme(
+    legend.position = 'top',
+    text = element_text(size = 20),
+    panel.grid = element_blank()
+  )
 
 ```
 

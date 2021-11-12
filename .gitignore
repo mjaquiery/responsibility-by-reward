@@ -7,3 +7,4 @@ past-data
 ATTRESP/database_connect.php
 ATTRESP/database_config.php
 .idea
+analysis/*.docx

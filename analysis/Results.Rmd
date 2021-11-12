@@ -1,0 +1,410 @@
+---
+title: "Results"
+author: "Matt Jaquiery"
+date: "12/11/2021"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, include = F)
+
+library(tidyverse)
+library(glue)
+library(lubridate)
+library(ggridges)
+library(ez)
+library(BayesFactor)
+library(magrittr)
+library(prettyMD) # custom library for formatting t test output
+```
+
+```{r load raw data}
+d <- read.csv('../data/main-data_raw.csv') %>% 
+  as_tibble()
+```
+
+# Results
+
+```{r descriptive stats}
+
+max_rating_time <- 15000 # 15s
+max_missed_trials <- 10
+expected_trial_n <- 72 # 3 sets of 2x12 trials
+n_participants <- 500
+
+# # double_entry -- taken care of by Prolific
+# exclude_ids <- d %>%
+#   nest(d = -prolificid) %>%
+#   mutate(
+#     d = map(d, ~ filter(., subject_id != subject_id[1]))
+#   ) %>%
+#   unnest(cols = d) %>%
+#   select(subject_id) %>% 
+#   unique() %>%
+#   mutate(double_entry = T)
+exclude_ids <- tribble(~ subject_id)
+
+# mark trials that take too long as missed
+d <- d %>% 
+  mutate(tooLong = time_ratings_end - time_ratings_start > max_rating_time)
+
+# Back up dataframe for keeping a record of lost data
+d.old <- d
+
+# max_missed_trials
+exclude_ids <- full_join(
+  exclude_ids,
+  d %>% 
+    nest(df = -subject_id) %>%
+    mutate(missed_trials = 
+             map_dbl(df, . %>% filter(vote_p1 == "" | tooLong) %>% nrow()),
+           missed_trials = missed_trials >= max_missed_trials) %>%
+    filter(missed_trials) %>%
+    select(-df),
+  by = "subject_id"
+)
+
+# expected_trial_n
+exclude_ids <- full_join(
+  exclude_ids, 
+  d %>%
+    filter(label == 'threePlayerGamble') %>%
+    nest(df = -subject_id) %>%
+    mutate(df = map_dbl(df, nrow)) %>%
+    filter(df < expected_trial_n) %>%
+    mutate(trial_count = T) %>%
+    select(-df),
+  by = "subject_id"
+  )
+
+# We now remove missed trials
+# Whether we do this BEFORE or AFTER checking consecutive responses matters
+d <- d %>% filter(vote_p1 != "" & !tooLong)
+
+# Note who we lost entirely while doing this
+exclude_ids <- full_join(
+  exclude_ids, 
+  d.old %>% 
+    transmute(subject_id, all_miss = !(subject_id %in% d$subject_id)) %>%
+    filter(all_miss) %>%
+    unique(),
+  by = "subject_id"
+)
+
+# max_consec_resp
+exclude_ids <- full_join(
+  exclude_ids,
+  d %>% 
+    nest(d = c(-subject_id, -block)) %>%
+    mutate(
+      consec_resp = map_lgl(d, ~ all(.$vote_p1 == .$vote_p1[1]))
+    ) %>%
+    filter(consec_resp) %>%
+    select(subject_id, consec_resp) %>%
+    unique(),
+  by = "subject_id"
+)
+
+exclude_ids <- full_join(
+  exclude_ids,
+  d %>% 
+    filter(!(subject_id %in% exclude_ids$subject_id)) %>%
+    nest(d = -subject_id) %>%
+    mutate(first = map_dbl(d, ~ min(as_datetime(.$date)))) %>%
+    arrange(first) %>%
+    rowid_to_column() %>%
+    filter(rowid > n_participants) %>%
+    transmute(subject_id, surplus_to_prereg = T),
+  by = "subject_id"
+)
+
+exclude_ids %>% 
+  mutate(total_unique_exclusions = 1) %>% 
+  select(everything(), total_unique_exclusions, -subject_id) %>% 
+  summarise_all(sum, na.rm = T) %>% 
+  pivot_longer(cols = everything(), 
+               names_to = 'Reason', 
+               values_to = 'N excluded') 
+  # apa_table()
+
+d <- d %>% 
+  filter(!(subject_id %in% exclude_ids$subject_id)) %>% 
+  mutate(
+    subject_id = factor(subject_id),
+    status = factor(status, labels = c('Participant in majority', 
+                                       'Participant in minority')),
+    outcome = factor(outcome, labels = c('Reward', 'No reward')),
+    getsout = factor(getsout, labels = c('Player 0', 'Participant', 'Player 2')),
+    pgetsout = factor(if_else(getsout == "Participant", 1, 2), labels = c(
+      'Participant gets outcome', 'Another gets outcome'
+    ))
+  )
+
+```
+
+`r length(unique(d.old$subject_id))` participants attempted the experiment.
+In line with our declared exclusion criteria, we excluded `r nrow(exclude_ids)`, leaving our target sample size of `r length(unique(d$subject_id))` participants for analysis.
+We planned to exclude participants where: it was not their first attempt at the experiment (0);
+they did not choose a gamble on 10 or more trials (`r sum(exclude_ids$missed_trials, na.rm = T)`);
+they did not use both response buttons in choosing gambles in each block (`r sum(exclude_ids$consec_resp, na.rm = T)`); or their data did not include all 72 trials (`r sum(exclude_ids$trial_count, na.rm = T) + sum(exclude_ids$all_miss, na.rm = T)`).
+Finally, the last `r sum(exclude_ids$surplus_to_prereg, na.rm = T)` participants were excluded to keep to our preregistered sample size.
+The trial count exclusions were calculated before individual trials were removed. 
+Individual trials were removed where: 
+the participant failed to respond (`r round(d.old %>% filter(is.na(rt), vote_p1 == "") %>% nrow() / d.old %>% filter(is.na(rt)) %>% nrow() * 100, 2)`%); 
+or the participant stayed longer than 15 sec on the responsibility rating screen (`r round(d.old %>% filter(is.na(rt), tooLong) %>% nrow() / d.old %>% filter(is.na(rt)) %>% nrow() * 100, 2)`%).
+The participants in the sample remaining after exclusions self-reported their mean age as `r round(d %>% pull(age) %>% as.numeric() %>% mean(), 2)` years (_SD_=`r round(d %>% pull(age) %>% as.numeric() %>% sd(), 2)`; range: `r r = d %>% pull(age) %>% as.numeric() %>% range(); round(r[1], 2)`, `r round(r[2], 2)`). They self-reported their gender with a single character as `r d %>% transmute(gender = str_to_upper(gender), subject_id) %>% group_by(gender, subject_id) %>% summarise(n = n(), .groups = "drop_last") %>% summarise(n = n()) %>% mutate(str = glue("{gender}: {n} ({sprintf('%.2f', round(n / sum(n), 2) * 100)}%)")) %>% pull(str) %>% paste(collapse = ', ')`.
+
+## Responsibility ratings
+
+```{r pivot and figure}
+
+d.long <- d %>% 
+  pivot_longer(cols = starts_with('responsibility_rating_p'),
+               names_to = 'rated_player',
+               values_to = 'responsibility_rating') %>%
+  mutate(rated_player = str_extract(rated_player, 'p[0-9]+$'),
+         rated_player = case_when(rated_player == 'p0' ~ 'Player 0', 
+                                  rated_player == 'p1' ~ 'Participant',
+                                  rated_player == 'p2' ~ 'Player 2'),
+         is_participant = factor(if_else(rated_player == 'Participant',
+                                         'ratingForParticipant',
+                                         'ratingForOther')),
+         gout = if_else(getsout == 'Participant', 
+                        'Participant', as.character(getsout)),
+         rated_gets_outcome = str_detect(rated_player, paste0(gout)),
+         rated_gets_outcome = factor(if_else(rated_gets_outcome, 
+                                             'ratedGetsOutcome',
+                                             'otherGetsOutcome')),
+         `Outcome recipient` = if_else(
+           rated_gets_outcome == "ratedGetsOutcome",
+           "Outcome owner", "Not outcome owner"
+         ),
+         `Outcome valence` = outcome)
+
+
+dw <- 1
+
+fig <- d.long %>%
+  group_by(subject_id, `Outcome valence`, `Outcome recipient`, is_participant) %>% 
+  summarise(responsibility_rating = mean(responsibility_rating), .groups = 'drop') %>%
+  mutate(
+    `Is participant` = if_else(is_participant == "ratingForOther", "Other", "Self")
+  ) %>%
+  mutate(
+    `Outcome recipient` = fct_rev(`Outcome recipient`),
+    `Is participant` = fct_rev(`Is participant`)
+  ) %>%
+  ggplot(aes(x = `Is participant`, y = responsibility_rating, colour = `Outcome valence`)) +
+  geom_hline(yintercept = 100 / 3, linetype = 'dashed', size = 3) +
+  geom_point(
+    alpha = .15, size = 10, 
+    position = position_jitterdodge(dw/3, dodge.width = dw)
+  ) +
+  stat_summary(geom = "col", aes(group = `Outcome valence`), fill = NA, size = 3, 
+               fun = mean, position = position_dodge(dw)) +
+  stat_summary(geom = "errorbar", aes(group = `Outcome valence`), width = 0, 
+               fun.data = mean_cl_normal, position = position_dodge(dw), size = 9) +
+  scale_colour_discrete(h.start = 180) +
+  scale_y_continuous(limits = c(0, 100), expand = expansion(0, c(2, 5))) +
+  facet_wrap(~`Outcome recipient`) +
+  labs(x = "", 
+       y = "Participant rating of responsibility") +
+  theme(
+    legend.position = 'top',
+    text = element_text(size = 100),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    strip.background = element_blank()
+  )
+
+ggsave(
+  './figures/anova.png',
+  plot = fig,
+  width = 1200, height = 900, 
+  units = 'mm', dpi = 300
+)
+
+```
+
+```{r figure, fig.cap="Ratings of responsibility by category. Each point is a participant's average. The dashed line indicates 1/3rd, the expected responsibility rating if all three group members were equally responsible for the outcome. Columns show the mean values for each category, with the error bars indicating 95\\% confidence intervals."}
+knitr::include_graphics('./figures/anova.png')
+```
+
+```{r anova and marginal means}
+
+suppressWarnings({
+  a <- ezANOVA(
+    data = d.long,
+    dv = responsibility_rating,
+    wid = subject_id,
+    within = c(
+      outcome,
+      rated_gets_outcome,
+      is_participant
+    ),
+    type = 3
+  )
+})
+
+if (any(a$ANOVA$p > 1e-6)) stop("check p-values, not all < .00001")
+
+a <- a$ANOVA %>% 
+  mutate(
+    str = glue("_F_({DFn}/{DFd}) = {round(F, 2)}, _p_ < .0001, _ges_ = {round(ges, 3)}")
+  )
+
+# MARGINAL MEANS
+
+# Outcome ownership main effect
+mm.own <- d.long %>%
+  group_by(rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  summarise(m = mean(r), sd = sd(r)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+mm.own.self <- d.long %>%
+  filter(is_participant == "ratingForParticipant") %>%
+  group_by(rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  summarise(m = mean(r), sd = sd(r)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+mm.own.other <- d.long %>%
+  filter(is_participant == "ratingForOther") %>%
+  group_by(rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  summarise(m = mean(r), sd = sd(r)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+tt.own.self <- d.long %>%
+  filter(is_participant == "ratingForParticipant") %>%
+  group_by(subject_id, rated_gets_outcome) %>% 
+  summarise(r = mean(responsibility_rating), .groups = "drop") %$%
+  t.test(r ~ rated_gets_outcome, data = ., paired = T)
+tt.own.other <- d.long %>%
+  filter(is_participant == "ratingForOther") %>%
+  group_by(subject_id, rated_gets_outcome) %>% 
+  summarise(r = mean(responsibility_rating), .groups = "drop") %$%
+  t.test(r ~ rated_gets_outcome, data = ., paired = T)
+
+mm.own; mm.own.self; md.t(tt.own.self); mm.own.other; md.t(tt.own.other)
+
+# Outcome valence main effect
+mm.out <- d.long %>%
+  group_by(outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  summarise(m = mean(r), sd = sd(r)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+mm.out.self <- d.long %>%
+  filter(is_participant == "ratingForParticipant") %>%
+  group_by(outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  summarise(m = mean(r), sd = sd(r)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+mm.out.other <- d.long %>%
+  filter(is_participant == "ratingForOther") %>%
+  group_by(outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  summarise(m = mean(r), sd = sd(r)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+tt.out.self <- d.long %>%
+  filter(is_participant == "ratingForParticipant") %>%
+  group_by(subject_id, outcome) %>% 
+  summarise(r = mean(responsibility_rating), .groups = "drop") %$%
+  t.test(r ~ outcome, data = ., paired = T)
+tt.out.other <- d.long %>%
+  filter(is_participant == "ratingForOther") %>%
+  group_by(subject_id, outcome) %>% 
+  summarise(r = mean(responsibility_rating), .groups = "drop") %$%
+  t.test(r ~ outcome, data = ., paired = T)
+
+mm.out; mm.out.self; md.t(tt.out.self); mm.out.other; md.t(tt.out.other)
+
+# Outcome valence x Outcome ownership
+mm.oo <- d.long %>%
+  group_by(outcome, rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  pivot_wider(names_from = outcome, values_from = r) %>%
+  mutate(diff = `Reward` - `No reward`) %>% 
+  summarise(m = mean(diff), sd = sd(diff), .groups = "drop_last") %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+mm.oo.self <- d.long %>%
+  filter(is_participant == "ratingForParticipant") %>%
+  group_by(outcome, rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  pivot_wider(names_from = outcome, values_from = r) %>%
+  mutate(diff = `Reward` - `No reward`) %>% 
+  summarise(m = mean(diff), sd = sd(diff), .groups = "drop_last") %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+mm.oo.other <- d.long %>%
+  filter(is_participant == "ratingForOther") %>%
+  group_by(outcome, rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  pivot_wider(names_from = outcome, values_from = r) %>%
+  mutate(diff = `Reward` - `No reward`) %>% 
+  summarise(m = mean(diff), sd = sd(diff), .groups = "drop_last") %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+tt.oo.self <- d.long %>%
+  filter(is_participant == "ratingForParticipant") %>%
+  group_by(outcome, rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  pivot_wider(names_from = outcome, values_from = r) %>%
+  mutate(diff = `Reward` - `No reward`) %$%
+  t.test(diff ~ rated_gets_outcome, data = ., paired = T)
+tt.oo.other <- d.long %>%
+  filter(is_participant == "ratingForOther") %>%
+  group_by(outcome, rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  pivot_wider(names_from = outcome, values_from = r) %>%
+  mutate(diff = `Reward` - `No reward`) %$%
+  t.test(diff ~ rated_gets_outcome, data = ., paired = T)
+  
+mm.oo; mm.oo.self; md.t(tt.oo.self); mm.oo.other; md.t(tt.oo.other)
+
+# Outcome valence x Outcome ownership x Self
+mm.3w <- d.long %>%
+  group_by(is_participant, outcome, rated_gets_outcome, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "keep") %>%
+  pivot_wider(names_from = outcome, values_from = r) %>%
+  summarise(diff = `Reward` - `No reward`, .groups = "drop_last") %>%
+  pivot_wider(names_from = rated_gets_outcome, values_from = diff) %>%
+  summarise(diff = ratedGetsOutcome - otherGetsOutcome, .groups = "drop") %>%
+  group_by(is_participant) %>%
+  summarise(m = mean(diff), sd = sd(diff)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+
+# Main effect of Self
+mm.self <- d.long %>%
+  group_by(is_participant, subject_id) %>%
+  summarise(r = mean(responsibility_rating), .groups = "drop_last") %>%
+  summarise(m = mean(r), sd = sd(r)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+```
+
+Participants' responsibility ratings matched the pattern we expected in many respects. 
+As expected, there was a main effect of ownership where responsibility ratings were higher for the outcome owner (`r a$str[2]`; Mean responsibility _without_ outcome = `r mm.own$m[1]` (`r mm.own$sd[1]`); Mean responsibility _with_ outcome = `r mm.own$m[2]` (`r mm.own$sd[2]`)).
+This effect was present both within Self ratings (Mean responsibility _without_ outcome = `r mm.own.self$m[1]` (`r mm.own.self$sd[1]`); Mean responsibility _with_ outcome = `r mm.own.self$m[2]` (`r mm.own.self$sd[2]`); `r md.t(tt.own.self)`) and within Other ratings (Mean responsibility _without_ outcome = `r mm.own.other$m[1]` (`r mm.own.other$sd[1]`); Mean responsibility _with_ outcome = `r mm.own.other$m[2]` (`r mm.own.other$sd[2]`); `r md.t(tt.own.other)`).
+We also saw the expected valence bias, with responsibility ratings being higher on trials where the outcome was a reward compared to no reward (Main effect of outcome valence: `r a$str[1]`; Mean responsibility for _no reward_ outcome = `r mm.out$m[2]` (`r mm.out$sd[2]`); Mean responsibility for _reward_ outcome = `r mm.out$m[1]` (`r mm.out$sd[1]`)).
+This effect was present both within Self ratings (Mean responsibility for _no reward_ outcome = `r mm.out.self$m[2]` (`r mm.out.self$sd[2]`); Mean responsibility for _reward_ outcome = `r mm.out.self$m[1]` (`r mm.out.self$sd[1]`); `r md.t(tt.out.self)`) and within Other ratings (Mean responsibility for _no reward_ outcome = `r mm.out.other$m[2]` (`r mm.out.other$sd[2]`); Mean responsibility for _reward_ outcome = `r mm.out.other$m[1]` (`r mm.out.other$sd[1]`); `r md.t(tt.out.other)`).
+
+In terms of interactions, we expected that valence bias would be stronger when the rated person is the outcome owner, and observed the predicted outcome valence x ownership interaction (`r a$str[4]`; Mean reward benefit _without_ outcome = `r mm.oo$m[1]` (`r mm.oo$sd[1]`); Mean reward benefit _with_ outcome = `r mm.oo$m[2]` (`r mm.oo$sd[2]`)).
+We observed this pattern for both Self ratings (Mean reward benefit _without_ outcome = `r mm.oo.self$m[1]` (`r mm.oo.self$sd[1]`); Mean reward benefit _with_ outcome = `r mm.oo.self$m[2]` (`r mm.oo.self$sd[2]`); `r md.t(tt.oo.self)`) and Other ratings (Mean reward benefit _without_ outcome = `r mm.oo.other$m[1]` (`r mm.oo.other$sd[1]`); Mean reward benefit _with_ outcome = `r mm.oo.other$m[2]` (`r mm.oo.other$sd[2]`); `r md.t(tt.oo.self)`).
+We also found the expected three-way interaction: the difference in reward benefit from receiving the reward was larger for Self ratings than Other ratings (`r a$str[7]`; Mean receive reward benefit for Self = `r mm.3w$m[2]` (`r mm.3w$sd[2]`); Mean receive reward benefit for Other = `r mm.3w$m[1]` (`r mm.3w$sd[1]`)).
+
+We also saw effects for which we had no formal expectations.
+Other ratings of responsibility were overall higher than Self ratings (`r a$str[3]`; Mean Self responsibility = `r mm.self$m[2]` (`r mm.self$sd[2]`); Mean Other responsibility = `r mm.self$m[1]` (`r mm.self$sd[1]`)).
+The other interactions were all significant, meaning that we saw differences between Self and Other in both outcome ownership bias (`r a$str[6]`) and outcome valence bias (`r a$str[5]`).
+
+## Discussion notes
+
+* All ratings are way above the intuitive value of 1/3 (given participants judge everyone on every trial).
+* Stuff came out pretty much as we were expecting.
+* The overall ratings for Other were higher, but the effects were larger for Self.  
